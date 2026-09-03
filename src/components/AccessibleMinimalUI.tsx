@@ -17,6 +17,7 @@ export function AccessibleMinimalUI() {
     activeModule, voiceEnabled, humanVeto,
     lastResponse, lastMoralEval, evidenceCount,
     processCommand, toggleVoice, toggleHumanVeto, setModule,
+    geminiRemote, toggleGeminiRemote, worldEnabled, toggleWorldConnection,
   } = useApp();
 
   const [listening, setListening] = useState(false);
@@ -138,6 +139,22 @@ export function AccessibleMinimalUI() {
           aria-label="Activar o desactivar veto humano"
         >
           {humanVeto ? '\u{1F6D1} Veto ON' : '\u{2705} Veto OFF'}
+        </button>
+        <button
+          className={`toggle-btn ${geminiRemote ? 'on' : 'off'}`}
+          onClick={toggleGeminiRemote}
+          aria-pressed={geminiRemote}
+          aria-label="Activar o desactivar Gemini remoto"
+        >
+          {geminiRemote ? '\u{1F4A1} Gemini ON' : '\u{1F4A1} Gemini OFF'}
+        </button>
+        <button
+          className={`toggle-btn ${worldEnabled ? 'on' : 'off'}`}
+          onClick={toggleWorldConnection}
+          aria-pressed={worldEnabled}
+          aria-label="Activar o desactivar conexion al mundo"
+        >
+          {worldEnabled ? '\u{1F310} Mundo ON' : '\u{1F310} Mundo OFF'}
         </button>
       </div>
 

@@ -41,6 +41,7 @@ export class GeminiService {
   private config: GeminiConfig;
   private bridge: TCREIBridge;
   private useRemote = false;
+  private worldConnected = false;
 
   constructor(config?: Partial<GeminiConfig>) {
     this.config = { model: 'gemini-2.0-flash', ...config };
@@ -49,11 +50,22 @@ export class GeminiService {
 
   setApiKey(key: string): void {
     this.config.apiKey = key;
-    this.useRemote = !!key;
+  }
+
+  setRemoteEnabled(enabled: boolean): void {
+    this.useRemote = enabled;
+  }
+
+  setWorldConnected(connected: boolean): void {
+    this.worldConnected = connected;
   }
 
   isRemoteEnabled(): boolean {
     return this.useRemote;
+  }
+
+  isWorldConnected(): boolean {
+    return this.worldConnected;
   }
 
   async query(module: string, perception: string, command: string): Promise<TCREIResponse> {

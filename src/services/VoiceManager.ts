@@ -5,6 +5,8 @@ export interface VoiceCue {
   timestamp: number;
 }
 
+const VOICE_STORAGE_KEY = 'sentra_voice_uri';
+
 export class VoiceManager {
   private synth: SpeechSynthesis | null = null;
   private queue: VoiceCue[] = [];
@@ -12,11 +14,46 @@ export class VoiceManager {
   private lastSpoken: Map<string, number> = new Map();
   private dedupeWindowMs = 5000;
   private enabled = true;
+  private selectedVoiceURI: string | null = null;
+  private voicesLoaded = false;
 
   constructor() {
     if ('speechSynthesis' in window) {
       this.synth = window.speechSynthesis;
+      this.selectedVoiceURI = this.loadSavedVoice();
+      this.synth.addEventListener('voiceschanged', () => {
+        this.voicesLoaded = true;
+        this.applySavedVoice();
+      });
     }
+  }
+
+  private loadSavedVoice(): string | null {
+    try {
+      return localStorage.getItem(VOICE_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  private applySavedVoice(): void {
+    if (!this.selectedVoiceURI || !this.synth) return;
+    const voices = this.synth.getVoices();
+    const match = voices.find((v) => v.voiceURI === this.selectedVoiceURI);
+    if (match) this.synth.speak(new SpeechSynthesisUtterance(''));
+  }
+
+  setVoice(voiceURI: string): void {
+    this.selectedVoiceURI = voiceURI;
+    try {
+      localStorage.setItem(VOICE_STORAGE_KEY, voiceURI);
+    } catch {
+      // localStorage may be unavailable
+    }
+  }
+
+  getSelectedVoiceURI(): string | null {
+    return this.selectedVoiceURI;
   }
 
   setEnabled(enabled: boolean): void {
@@ -51,6 +88,14 @@ export class VoiceManager {
     const utterance = new SpeechSynthesisUtterance(next.text);
     utterance.lang = 'es-ES';
     utterance.rate = 1.0;
+    if (this.selectedVoiceURI) {
+      const voices = this.synth.getVoices();
+      const voice = voices.find((v) => v.voiceURI === this.selectedVoiceURI);
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+      }
+    }
     utterance.onend = () => { this.current = null; this.processQueue(); };
     utterance.onerror = () => { this.current = null; this.processQueue(); };
     this.synth.speak(utterance);

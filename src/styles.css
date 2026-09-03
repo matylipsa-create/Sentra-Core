@@ -107,7 +107,7 @@ body {
 }
 .text-input-form button:hover { background: var(--primary-dark); }
 
-.control-toggles { display: flex; gap: var(--space-1); justify-content: center; }
+.control-toggles { display: flex; gap: var(--space-1); justify-content: center; flex-wrap: wrap; }
 .toggle-btn {
   padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
   background: var(--bg-elevated); color: var(--text-dim);
@@ -233,6 +233,18 @@ body {
   padding: 8px 12px; background: var(--bg-elevated);
   border: 1px solid var(--border); border-radius: var(--radius-sm);
   color: var(--text); font-size: 0.8rem;
+}
+.voice-selector-row { display: flex; flex-direction: column; gap: 6px; }
+.voice-selector-label { font-size: 0.85rem; color: var(--text); }
+.voice-select {
+  padding: 8px 10px; background: var(--bg-elevated);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); font-size: 0.8rem; cursor: pointer; outline: none;
+  max-width: 100%;
+}
+.voice-select:focus { border-color: var(--primary); }
+.gemini-quick-toggle {
+  margin-top: 4px; padding: 8px 14px; font-size: 0.8rem; text-align: center;
 }
 
 .toast-container {

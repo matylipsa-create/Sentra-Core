@@ -3,7 +3,7 @@ import { usePowerMode } from '../hooks/usePowerMode';
 import { useDeviceCapabilities } from '../hooks/useDeviceCapabilities';
 
 export function DemoModeBanner() {
-  const { activeModule, evidenceCount, humanVeto, geminiRemote } = useApp();
+  const { activeModule, evidenceCount, humanVeto, geminiRemote, worldEnabled } = useApp();
   const { profile, batteryLevel, isCharging } = usePowerMode();
   const { capabilities } = useDeviceCapabilities();
 
@@ -33,6 +33,10 @@ export function DemoModeBanner() {
       <div className="demo-banner-section">
         <span className="banner-label">IA</span>
         <span className="banner-value">{geminiRemote ? 'Gemini' : 'Local'}</span>
+      </div>
+      <div className="demo-banner-section">
+        <span className="banner-label">Mundo</span>
+        <span className="banner-value">{worldEnabled ? 'ON' : 'OFF'}</span>
       </div>
       {capabilities && (
         <div className="demo-banner-section">

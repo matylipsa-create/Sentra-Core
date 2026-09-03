@@ -26,6 +26,7 @@ export interface AppState {
   lastMoralEval: MoralEvaluation | null;
   evidenceCount: number;
   geminiRemote: boolean;
+  worldEnabled: boolean;
 }
 
 interface AppContextValue extends AppState {
@@ -36,6 +37,8 @@ interface AppContextValue extends AppState {
   setSyncTransport: (transport: SyncTransport) => void;
   processCommand: (command: string, perception?: PerceptionData) => Promise<void>;
   setGeminiRemote: (enabled: boolean, apiKey?: string) => void;
+  toggleGeminiRemote: () => void;
+  toggleWorldConnection: () => void;
   exportData: () => Promise<void>;
   getEvidence: () => EVOLISEvidence[];
 }
@@ -43,11 +46,25 @@ interface AppContextValue extends AppState {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>({
-    activeModule: 'vision', voiceEnabled: true, humanVeto: false,
-    powerMode: 'normal', syncTransport: 'offline',
-    lastResponse: null, lastPerception: null, lastMoralEval: null,
-    evidenceCount: 0, geminiRemote: false,
+  const [state, setState] = useState<AppState>(() => {
+    let savedGemini = false;
+    let savedWorld = false;
+    let savedApiKey = '';
+    try {
+      savedGemini = localStorage.getItem('sentra_gemini_enabled') === 'true';
+      savedWorld = localStorage.getItem('sentra_world_enabled') === 'true';
+      savedApiKey = localStorage.getItem('sentra_gemini_api_key') ?? '';
+    } catch { /* localStorage unavailable */ }
+    if (savedGemini && savedApiKey) geminiService.setApiKey(savedApiKey);
+    geminiService.setRemoteEnabled(savedGemini && !!savedApiKey);
+    geminiService.setWorldConnected(savedWorld);
+    return {
+      activeModule: 'vision', voiceEnabled: true, humanVeto: false,
+      powerMode: 'normal', syncTransport: 'offline',
+      lastResponse: null, lastPerception: null, lastMoralEval: null,
+      evidenceCount: 0, geminiRemote: savedGemini && !!savedApiKey,
+      worldEnabled: savedWorld,
+    };
   });
 
   useEffect(() => {
@@ -94,13 +111,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setGeminiRemote = useCallback((enabled: boolean, apiKey?: string) => {
-    if (enabled && apiKey) geminiService.setApiKey(apiKey);
-    else geminiService.setApiKey('');
+    if (enabled && apiKey) {
+      geminiService.setApiKey(apiKey);
+      geminiService.setRemoteEnabled(true);
+      try { localStorage.setItem('sentra_gemini_enabled', 'true'); localStorage.setItem('sentra_gemini_api_key', apiKey); } catch { /* localStorage unavailable */ }
+    } else {
+      geminiService.setApiKey('');
+      geminiService.setRemoteEnabled(false);
+      try { localStorage.setItem('sentra_gemini_enabled', 'false'); localStorage.removeItem('sentra_gemini_api_key'); } catch { /* localStorage unavailable */ }
+    }
     setState((s) => ({ ...s, geminiRemote: enabled }));
   }, []);
 
+  const toggleGeminiRemote = useCallback(() => {
+    setState((s) => {
+      const next = !s.geminiRemote;
+      geminiService.setRemoteEnabled(next);
+      try { localStorage.setItem('sentra_gemini_enabled', String(next)); } catch { /* localStorage unavailable */ }
+      voiceManager.speak(next ? 'Gemini activado' : 'Gemini desactivado, modo local', 1);
+      return { ...s, geminiRemote: next };
+    });
+  }, []);
+
+  const toggleWorldConnection = useCallback(() => {
+    setState((s) => {
+      const next = !s.worldEnabled;
+      geminiService.setWorldConnected(next);
+      try { localStorage.setItem('sentra_world_enabled', String(next)); } catch { /* localStorage unavailable */ }
+      voiceManager.speak(next ? 'Conexion al mundo activada' : 'Conexion al mundo desactivada, modo offline', 1);
+      return { ...s, worldEnabled: next };
+    });
+  }, []);
+
   const processCommand = useCallback(async (command: string, perception?: PerceptionData) => {
-    const eval_ = moralNode.evaluate(command);
+    const eval_ = moralNode.evaluate(command, { externalRequest: state.worldEnabled });
     setState((s) => ({ ...s, lastMoralEval: eval_ }));
     if (!eval_.allowed) {
       const reason = eval_.decisions.find((d) => !d.passed)?.reason ?? 'Accion bloqueada';
@@ -129,6 +173,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value: AppContextValue = {
     ...state, setModule, toggleVoice, toggleHumanVeto,
     setPowerMode, setSyncTransport, processCommand, setGeminiRemote,
+    toggleGeminiRemote, toggleWorldConnection,
     exportData, getEvidence,
   };
 

@@ -15,6 +15,7 @@ import { evolis } from './core/EVOLIS';
 import { syncManager, SyncTransport } from './core/SyncManager';
 import { deviceManager } from './core/DeviceManager';
 import { PowerMode } from './core/PowerManager';
+import { voiceManager } from './services/VoiceManager';
 
 function EvidenceView() {
   const { getEvidence, exportData } = useApp();
@@ -476,9 +477,37 @@ function MainContent() {
 }
 
 function SettingsPanel() {
-  const { geminiRemote, setGeminiRemote, humanVeto, toggleHumanVeto, voiceEnabled, toggleVoice } = useApp();
+  const {
+    geminiRemote, setGeminiRemote, toggleGeminiRemote,
+    humanVeto, toggleHumanVeto, voiceEnabled, toggleVoice,
+    worldEnabled, toggleWorldConnection,
+  } = useApp();
   const [apiKey, setApiKey] = useState('');
   const [panelOpen, setPanelOpen] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<string>(voiceManager.getSelectedVoiceURI() ?? '');
+
+  useEffect(() => {
+    const loadVoices = () => {
+      const available = voiceManager.getAvailableVoices();
+      if (available.length > 0) {
+        setVoices(available);
+        if (!selectedVoice) {
+          const saved = voiceManager.getSelectedVoiceURI();
+          if (saved && available.some((v) => v.voiceURI === saved)) {
+            setSelectedVoice(saved);
+          }
+        }
+      }
+    };
+    loadVoices();
+    window.setTimeout(loadVoices, 300);
+  }, [selectedVoice]);
+
+  const handleVoiceChange = (voiceURI: string) => {
+    setSelectedVoice(voiceURI);
+    voiceManager.setVoice(voiceURI);
+  };
 
   return (
     <div className={`settings-panel ${panelOpen ? 'open' : ''}`}>
@@ -527,6 +556,36 @@ function SettingsPanel() {
               aria-label="Gemini API Key"
             />
           )}
+          <div className="setting-row">
+            <label>
+              <input type="checkbox" checked={worldEnabled} onChange={toggleWorldConnection} />
+              Conexion al mundo
+            </label>
+          </div>
+          {voices.length > 0 && (
+            <div className="setting-row voice-selector-row">
+              <label className="voice-selector-label">Voz del sistema</label>
+              <select
+                className="voice-select"
+                value={selectedVoice}
+                onChange={(e) => handleVoiceChange(e.target.value)}
+                aria-label="Selector de voz"
+              >
+                {voices.map((v) => (
+                  <option key={v.voiceURI} value={v.voiceURI}>
+                    {v.name} ({v.lang})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button
+            className="action-btn gemini-quick-toggle"
+            onClick={toggleGeminiRemote}
+            aria-label="Activar o desactivar Gemini rapidamente"
+          >
+            {geminiRemote ? 'Gemini: ON' : 'Gemini: OFF'}
+          </button>
         </div>
       )}
     </div>

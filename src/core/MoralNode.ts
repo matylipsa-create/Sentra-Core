@@ -13,6 +13,9 @@ export interface MoralEvaluation {
 }
 
 export interface MoralInput {
+  // IMPORTANTE: Cuando el agente se conecte al mundo (APIs externas),
+  // pasar { externalRequest: true } a evaluate() para que OFFLINE_ONLY
+  // pueda fallar realmente y bloquear la operacion.
   externalRequest?: boolean;
 }
 
