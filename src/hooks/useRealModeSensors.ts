@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import * as tf from '@tensorflow/tfjs';
-import * as cocoSsd from '@tensorflow-models/coco-ssd';
 import { moralNode } from '../core/MoralNode';
 import { evolis } from '../core/EVOLIS';
 import { PerceptionEngine, PerceptionData } from '../core/PerceptionEngine';
@@ -19,6 +17,10 @@ export interface RealModeSensorsState {
   lastEval: { allowed: boolean; reason: string } | null;
 }
 
+type CocoSsdModel = {
+  detect: (img: HTMLVideoElement) => Promise<{ class: string; score: number; bbox: number[] }[]>;
+};
+
 export function useRealModeSensors(
   videoRef: React.RefObject<HTMLVideoElement>,
   active: boolean,
@@ -27,19 +29,22 @@ export function useRealModeSensors(
   const [state, setState] = useState<RealModeSensorsState>({
     loading: true, error: null, detections: [], perception: null, lastEval: null,
   });
-  const modelRef = useRef<cocoSsd.ObjectDetection | null>(null);
+  const modelRef = useRef<CocoSsdModel | null>(null);
   const intervalRef = useRef<number | null>(null);
   const perceptionEngine = useRef(new PerceptionEngine());
 
   useEffect(() => {
     let cancelled = false;
+
     async function loadModel() {
       try {
+        const tf = await import('@tensorflow/tfjs');
+        const cocoSsd = await import('@tensorflow-models/coco-ssd');
         await tf.ready();
         await tf.setBackend('webgl');
         const model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
         if (cancelled) return;
-        modelRef.current = model;
+        modelRef.current = model as unknown as CocoSsdModel;
         setState((s) => ({ ...s, loading: false }));
       } catch (err) {
         setState((s) => ({
@@ -48,12 +53,21 @@ export function useRealModeSensors(
         }));
       }
     }
-    loadModel();
+
+    if (active) {
+      loadModel();
+    } else {
+      setState({ loading: true, error: null, detections: [], perception: null, lastEval: null });
+    }
+
     return () => {
       cancelled = true;
-      if (intervalRef.current !== null) { clearInterval(intervalRef.current); intervalRef.current = null; }
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
-  }, []);
+  }, [active]);
 
   useEffect(() => {
     if (!active || state.loading || !modelRef.current) return;
@@ -83,7 +97,10 @@ export function useRealModeSensors(
     detect();
     intervalRef.current = window.setInterval(detect, intervalMs);
     return () => {
-      if (intervalRef.current !== null) { clearInterval(intervalRef.current); intervalRef.current = null; }
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [active, state.loading, intervalMs, videoRef]);
 

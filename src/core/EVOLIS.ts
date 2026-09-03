@@ -4,6 +4,7 @@ import {
   verifyHashChain,
   DilithiumSignature,
   dilithiumSign,
+  dilithiumVerify,
   generateDilithiumKeyPair,
   uuidv4,
 } from '../lib/crypto';
@@ -60,18 +61,26 @@ export class EVOLIS {
   async verify(): Promise<boolean> {
     if (this.entries.length === 0) return true;
     const chain = this.entries.map((e) => e.entry);
-    return verifyHashChain(chain);
+    const chainValid = await verifyHashChain(chain);
+    if (!chainValid) return false;
+    for (const evidence of this.entries) {
+      const message = `${evidence.entry.index}:${evidence.entry.hash}:${evidence.entry.previousHash}`;
+      const sigValid = await dilithiumVerify(message, evidence.signature, this.publicKey);
+      if (!sigValid) return false;
+    }
+    return true;
   }
 
   getEntries(): EVOLISEvidence[] {
     return [...this.entries];
   }
 
-  getStats(): EVOLISStats {
+  async getStats(): Promise<EVOLISStats> {
     const modules = [...new Set(this.entries.map((e) => e.module))];
+    const verified = await this.verify();
     return {
       totalEntries: this.entries.length,
-      verified: true,
+      verified,
       firstEntry: this.entries.length > 0 ? this.entries[0].entry.timestamp : null,
       lastEntry: this.entries.length > 0 ? this.entries[this.entries.length - 1].entry.timestamp : null,
       modules,

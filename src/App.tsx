@@ -8,6 +8,7 @@ import { DemoModeBanner } from './components/DemoModeBanner';
 import { useRealModeSensors } from './hooks/useRealModeSensors';
 import { usePowerMode } from './hooks/usePowerMode';
 import { useDeviceCapabilities } from './hooks/useDeviceCapabilities';
+import { useSensorService } from './hooks/useSensorService';
 import { moduleManager } from './modules/ModuleManager';
 import { evolis } from './core/EVOLIS';
 import { syncManager, SyncTransport } from './core/SyncManager';
@@ -48,7 +49,7 @@ function EvidenceView() {
           onClick={async () => {
             const valid = await evolis.verify();
             showToast(
-              valid ? 'Cadena verificada: integridad OK' : 'Cadena corrupta',
+              valid ? 'Cadena verificada: integridad y firmas OK' : 'Cadena corrupta o firma invalida',
               valid ? 'success' : 'error'
             );
           }}
@@ -99,6 +100,99 @@ function LearningView() {
   );
 }
 
+type GameScene = 'intro' | 'forest' | 'cave' | 'village' | 'end';
+
+const GAME_SCENES: Record<GameScene, {
+  text: string;
+  options: { label: string; next: GameScene; command?: string }[];
+}> = {
+  intro: {
+    text: 'Te encuentras en un camino de tierra. A tu izquierda hay un bosque oscuro. A tu derecha, una cueva. Al frente, un pueblo lejano.',
+    options: [
+      { label: 'Entrar al bosque', next: 'forest', command: 'ir al bosque' },
+      { label: 'Explorar la cueva', next: 'cave', command: 'explorar la cueva' },
+      { label: 'Caminar al pueblo', next: 'village', command: 'caminar al pueblo' },
+    ],
+  },
+  forest: {
+    text: 'El bosque es denso y humedo. Escuchas ruidos entre los arboles. Encuentras un sendero que se divide en dos.',
+    options: [
+      { label: 'Seguir el sendero', next: 'village', command: 'seguir el sendero' },
+      { label: 'Volver al camino', next: 'intro', command: 'volver' },
+    ],
+  },
+  cave: {
+    text: 'La cueva es fria y oscura. Ves una tenue luz mas adentro. Algo brilla en el suelo.',
+    options: [
+      { label: 'Recoger el objeto', next: 'end', command: 'recoger el objeto' },
+      { label: 'Salir de la cueva', next: 'intro', command: 'salir' },
+    ],
+  },
+  village: {
+    text: 'Llegas al pueblo. Los habitantes te miran con curiosidad. Un anciano te invita a descansar.',
+    options: [
+      { label: 'Aceptar el descanso', next: 'end', command: 'descansar' },
+      { label: 'Volver al camino', next: 'intro', command: 'volver al camino' },
+    ],
+  },
+  end: {
+    text: 'Tu aventura llega a su fin por ahora. Sentra Core ha registrado tu travesia.',
+    options: [
+      { label: 'Empezar de nuevo', next: 'intro', command: 'reiniciar' },
+    ],
+  },
+};
+
+function GameView() {
+  const { processCommand, lastResponse } = useApp();
+  const [storyState, setStoryState] = useState<GameScene>('intro');
+  const [history, setHistory] = useState<string[]>([]);
+
+  const scene = GAME_SCENES[storyState];
+
+  const handleChoice = (option: { label: string; next: GameScene; command?: string }) => {
+    setHistory((h) => [...h, scene.text]);
+    setStoryState(option.next);
+    if (option.command) {
+      processCommand(option.command);
+    }
+  };
+
+  return (
+    <div className="module-content game-view">
+      <h2>Narrativa Adaptativa</h2>
+      <div className="game-scene" aria-live="polite">
+        <p className="scene-text">{scene.text}</p>
+      </div>
+      <div className="game-options">
+        {scene.options.map((opt, i) => (
+          <button
+            key={i}
+            className="game-option-btn"
+            onClick={() => handleChoice(opt)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      {history.length > 0 && (
+        <div className="game-history">
+          <h3>Historial</h3>
+          {history.slice(-3).map((h, i) => (
+            <p key={i} className="history-entry">{h}</p>
+          ))}
+        </div>
+      )}
+      {lastResponse && (
+        <div className="game-response">
+          <span className="response-source">{lastResponse.source}</span>
+          <p>{lastResponse.text}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SilenceView() {
   return (
     <div className="module-content silence-view">
@@ -125,6 +219,7 @@ function MovementView() {
     orientation: { alpha: number; beta: number; gamma: number } | null;
     accel: { x: number; y: number; z: number } | null;
   }>({ gps: null, orientation: null, accel: null });
+  const { reading } = useSensorService();
 
   useEffect(() => {
     let watchId: number | null = null;
@@ -205,6 +300,12 @@ function MovementView() {
           )}
         </div>
       </div>
+      {reading?.compass && (
+        <div className="sensor-card" style={{ marginTop: '16px' }}>
+          <h3>Brujula</h3>
+          <p>Heading: {Math.round(reading.compass.heading)} grados</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -281,7 +382,29 @@ function SyncControls() {
         <p>Pares conectados: <strong>{syncStatus.peers.length}</strong></p>
         <p>Paquetes pendientes: <strong>{syncStatus.pendingPackets}</strong></p>
         <p>Paquetes sincronizados: <strong>{syncStatus.syncedPackets}</strong></p>
+        <p>Bluetooth: <strong>{syncStatus.bluetoothConnected ? 'Conectado' : 'Desconectado'}</strong></p>
       </div>
+      {syncTransport === 'bluetooth_mesh' && (
+        <div className="sync-actions">
+          <button
+            className="action-btn"
+            onClick={async () => {
+              const ok = await syncManager.connectBluetooth();
+              if (!ok) {
+                /* toast handled by caller in real usage */
+              }
+            }}
+          >
+            Conectar Bluetooth
+          </button>
+          <button
+            className="action-btn"
+            onClick={() => syncManager.disconnectBluetooth()}
+          >
+            Desconectar
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -343,6 +466,7 @@ function MainContent() {
   if (activeModule === 'vision') return <VisionView />;
   if (activeModule === 'evidencia') return <EvidenceView />;
   if (activeModule === 'aprendizaje') return <LearningView />;
+  if (activeModule === 'juego') return <GameView />;
   if (activeModule === 'silencio') return <SilenceView />;
   if (activeModule === 'movimiento') return <MovementView />;
   if (activeModule === 'impacto') return <ImpactView />;

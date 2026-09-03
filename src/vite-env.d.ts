@@ -27,3 +27,29 @@ interface Window {
   SpeechRecognition?: typeof SpeechRecognition;
   webkitSpeechRecognition?: typeof SpeechRecognition;
 }
+
+interface RequestDeviceOptions {
+  filters?: { services: (string | number)[] }[];
+  optionalServices?: (string | number)[];
+  acceptAllDevices?: boolean;
+}
+
+interface BluetoothRemoteGATTCharacteristic {
+  writeValue(data: BufferSource): Promise<void>;
+  readValue(): Promise<DataView>;
+  startNotifications(): Promise<BluetoothRemoteGATTCharacteristic>;
+}
+
+interface BluetoothRemoteGATTServer {
+  connected: boolean;
+  connect(): Promise<BluetoothRemoteGATTServer>;
+  disconnect(): void;
+  getPrimaryService(uuid: string): Promise<{ getCharacteristic(uuid: string): Promise<BluetoothRemoteGATTCharacteristic> }>;
+}
+
+interface BluetoothDevice extends EventTarget {
+  id?: string;
+  name?: string;
+  gatt?: BluetoothRemoteGATTServer;
+  addEventListener(type: 'gattserverdisconnected', listener: () => void): void;
+}

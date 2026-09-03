@@ -11,7 +11,8 @@ export interface PowerProfile {
   enableIMU: boolean;
   enableAudio: boolean;
   enableBackgroundSync: boolean;
-  cpuThrottle: number;
+  visionModel: 'lite_mobilenet_v2' | 'mobilenet_v2' | 'none';
+  maxFps: number;
 }
 
 const PROFILES: Record<PowerMode, PowerProfile> = {
@@ -26,7 +27,8 @@ const PROFILES: Record<PowerMode, PowerProfile> = {
     enableIMU: true,
     enableAudio: false,
     enableBackgroundSync: false,
-    cpuThrottle: 0.5,
+    visionModel: 'none',
+    maxFps: 5,
   },
   normal: {
     mode: 'normal',
@@ -39,7 +41,8 @@ const PROFILES: Record<PowerMode, PowerProfile> = {
     enableIMU: true,
     enableAudio: true,
     enableBackgroundSync: true,
-    cpuThrottle: 1,
+    visionModel: 'lite_mobilenet_v2',
+    maxFps: 15,
   },
   alto_rendimiento: {
     mode: 'alto_rendimiento',
@@ -52,7 +55,8 @@ const PROFILES: Record<PowerMode, PowerProfile> = {
     enableIMU: true,
     enableAudio: true,
     enableBackgroundSync: true,
-    cpuThrottle: 1,
+    visionModel: 'mobilenet_v2',
+    maxFps: 30,
   },
 };
 

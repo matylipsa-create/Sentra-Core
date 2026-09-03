@@ -22,12 +22,20 @@ const RULE_DESCRIPTIONS: Record<MoralRule, string> = {
 const VIOLENCE_KEYWORDS = [
   'danar', 'golpear', 'herir', 'matar', 'atacar', 'destruir',
   'violencia', 'arma', 'agredir', 'lastimar', 'torturar',
+  'apunal', 'disparar', 'estrangular', 'envenenar', 'secuestrar',
+  'amenazar', 'asaltar', 'aplastar', 'quemar', 'ahogar',
 ];
 
 const PRIVACY_KEYWORDS = [
   'contrasena', 'password', 'codigo secreto', 'pin', 'datos bancarios',
   'tarjeta de credito', 'seguro social', 'dni', 'curp',
+  'cuenta bancaria', 'numero de cuenta', 'cvv', 'clave',
+  'token', 'autenticacion', 'huella', 'biometrico',
 ];
+
+function normalize(text: string): string {
+  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
 
 export class MoralNode {
   private humanVetoActive = false;
@@ -41,11 +49,11 @@ export class MoralNode {
   }
 
   evaluate(command: string): MoralEvaluation {
-    const lower = command.toLowerCase();
+    const lower = normalize(command);
     const decisions: MoralDecision[] = [];
     const timestamp = Date.now();
 
-    const hasViolence = VIOLENCE_KEYWORDS.some((kw) => lower.includes(kw));
+    const hasViolence = VIOLENCE_KEYWORDS.some((kw) => lower.includes(normalize(kw)));
     decisions.push({
       rule: 'NO_VIOLENCE',
       passed: !hasViolence,
@@ -54,7 +62,7 @@ export class MoralNode {
         : 'Sin indicadores de violencia',
     });
 
-    const hasPrivacy = PRIVACY_KEYWORDS.some((kw) => lower.includes(kw));
+    const hasPrivacy = PRIVACY_KEYWORDS.some((kw) => lower.includes(normalize(kw)));
     decisions.push({
       rule: 'PRIVACY_FIRST',
       passed: !hasPrivacy,
@@ -63,10 +71,13 @@ export class MoralNode {
         : 'No solicita datos sensibles',
     });
 
+    const isOnline = navigator.onLine;
     decisions.push({
       rule: 'OFFLINE_ONLY',
       passed: true,
-      reason: 'El sistema opera completamente offline',
+      reason: isOnline
+        ? 'Conexion a internet detectada - modo offline-first activo'
+        : 'El sistema opera completamente offline',
     });
 
     decisions.push({

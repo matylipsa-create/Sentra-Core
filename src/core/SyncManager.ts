@@ -1,3 +1,5 @@
+import { sha256 } from '../lib/crypto';
+
 export type SyncTransport = 'syncthing' | 'bluetooth_mesh' | 'lora' | 'offline';
 
 export interface SyncPeer {
@@ -24,7 +26,11 @@ export interface SyncStatus {
   pendingPackets: number;
   syncedPackets: number;
   lastSync: number | null;
+  bluetoothConnected: boolean;
 }
+
+const SENTRA_SERVICE_UUID = '0000sentra-core-sync'.slice(0, 36);
+const SENTRA_CHARACTERISTIC_UUID = '0000sentra-data000'.slice(0, 36);
 
 export class SyncManager {
   private peers: Map<string, SyncPeer> = new Map();
@@ -32,12 +38,17 @@ export class SyncManager {
   private synced: SyncPacket[] = [];
   private transport: SyncTransport = 'offline';
   private deviceId: string;
+  private bluetoothDevice: BluetoothDevice | null = null;
+  private bluetoothCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
 
   constructor(deviceId: string) {
     this.deviceId = deviceId;
   }
 
   setTransport(transport: SyncTransport): void {
+    if (transport !== this.transport) {
+      this.disconnectBluetooth();
+    }
     this.transport = transport;
   }
 
@@ -69,14 +80,93 @@ export class SyncManager {
     return full;
   }
 
+  private async signPacket(packet: SyncPacket): Promise<string> {
+    const data = `${packet.id}:${packet.sourceId}:${packet.timestamp}:${packet.module}`;
+    return sha256(data);
+  }
+
+  async connectBluetooth(): Promise<boolean> {
+    if (!('bluetooth' in navigator)) return false;
+    try {
+      const device = await (navigator as Navigator & {
+        bluetooth: {
+          requestDevice: (opts: RequestDeviceOptions) => Promise<BluetoothDevice>;
+        };
+      }).bluetooth.requestDevice({
+        filters: [{ services: [SENTRA_SERVICE_UUID] }],
+        optionalServices: [SENTRA_SERVICE_UUID],
+      });
+
+      this.bluetoothDevice = device;
+      device.addEventListener('gattserverdisconnected', () => {
+        this.bluetoothCharacteristic = null;
+        this.bluetoothDevice = null;
+      });
+
+      const server = await device.gatt?.connect();
+      if (!server) return false;
+      const service = await server.getPrimaryService(SENTRA_SERVICE_UUID);
+      const characteristic = await service.getCharacteristic(SENTRA_CHARACTERISTIC_UUID);
+      this.bluetoothCharacteristic = characteristic;
+
+      const peerId = device.id ?? crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
+      this.registerPeer({
+        id: peerId,
+        name: device.name ?? 'Dispositivo Bluetooth',
+        transport: 'bluetooth_mesh',
+        lastSeen: Date.now(),
+        connected: true,
+      });
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  disconnectBluetooth(): void {
+    if (this.bluetoothCharacteristic) {
+      this.bluetoothCharacteristic = null;
+    }
+    if (this.bluetoothDevice?.gatt?.connected) {
+      this.bluetoothDevice.gatt.disconnect();
+    }
+    this.bluetoothDevice = null;
+    for (const [id, peer] of this.peers) {
+      if (peer.transport === 'bluetooth_mesh') {
+        this.peers.delete(id);
+      }
+    }
+  }
+
+  isBluetoothConnected(): boolean {
+    return !!this.bluetoothDevice?.gatt?.connected;
+  }
+
   async sync(): Promise<number> {
     if (this.transport === 'offline' || this.peers.size === 0) return 0;
     const toSync = [...this.pending];
     this.pending = [];
-    for (const packet of toSync) {
-      packet.signature = `sync_${this.transport}_${packet.id}`;
-      this.synced.push(packet);
+
+    if (this.transport === 'bluetooth_mesh' && this.bluetoothCharacteristic) {
+      for (const packet of toSync) {
+        packet.signature = await this.signPacket(packet);
+        try {
+          const encoder = new TextEncoder();
+          const data = encoder.encode(JSON.stringify(packet));
+          await this.bluetoothCharacteristic.writeValue(data);
+          this.synced.push(packet);
+        } catch {
+          this.pending.push(packet);
+        }
+      }
+    } else {
+      for (const packet of toSync) {
+        packet.signature = await this.signPacket(packet);
+        this.synced.push(packet);
+      }
     }
+
     return toSync.length;
   }
 
@@ -88,6 +178,7 @@ export class SyncManager {
       syncedPackets: this.synced.length,
       lastSync: this.synced.length > 0
         ? this.synced[this.synced.length - 1].timestamp : null,
+      bluetoothConnected: this.isBluetoothConnected(),
     };
   }
 
