@@ -9,6 +9,7 @@ import { useRealModeSensors } from './hooks/useRealModeSensors';
 import { usePowerMode } from './hooks/usePowerMode';
 import { useDeviceCapabilities } from './hooks/useDeviceCapabilities';
 import { useSensorService } from './hooks/useSensorService';
+import { useHardwareAutoAdjust } from './hooks/useHardwareAutoAdjust';
 import { moduleManager } from './modules/ModuleManager';
 import { evolis } from './core/EVOLIS';
 import { syncManager, SyncTransport } from './core/SyncManager';
@@ -551,6 +552,7 @@ function ToastContainer() {
 }
 
 function AppInner() {
+  useHardwareAutoAdjust();
   return (
     <AdaptiveUI>
       <DemoModeBanner />

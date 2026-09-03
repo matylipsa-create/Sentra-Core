@@ -12,6 +12,10 @@ export interface MoralEvaluation {
   timestamp: number;
 }
 
+export interface MoralInput {
+  externalRequest?: boolean;
+}
+
 const RULE_DESCRIPTIONS: Record<MoralRule, string> = {
   NO_VIOLENCE: 'No acciones que causen dano fisico o psicologico',
   PRIVACY_FIRST: 'No revelar datos personales sin consentimiento explicito',
@@ -48,7 +52,7 @@ export class MoralNode {
     return this.humanVetoActive;
   }
 
-  evaluate(command: string): MoralEvaluation {
+  evaluate(command: string, input?: MoralInput): MoralEvaluation {
     const lower = normalize(command);
     const decisions: MoralDecision[] = [];
     const timestamp = Date.now();
@@ -72,12 +76,16 @@ export class MoralNode {
     });
 
     const isOnline = navigator.onLine;
+    const externalRequest = input?.externalRequest ?? false;
+    const offlineViolation = externalRequest && !isOnline;
     decisions.push({
       rule: 'OFFLINE_ONLY',
-      passed: true,
-      reason: isOnline
-        ? 'Conexion a internet detectada - modo offline-first activo'
-        : 'El sistema opera completamente offline',
+      passed: !offlineViolation,
+      reason: offlineViolation
+        ? 'Solicitud externa bloqueada - sin conexion a internet'
+        : isOnline
+          ? 'Conexion a internet detectada - modo offline-first activo'
+          : 'El sistema opera completamente offline',
     });
 
     decisions.push({

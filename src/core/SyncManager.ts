@@ -29,8 +29,8 @@ export interface SyncStatus {
   bluetoothConnected: boolean;
 }
 
-const SENTRA_SERVICE_UUID = '0000sentra-core-sync'.slice(0, 36);
-const SENTRA_CHARACTERISTIC_UUID = '0000sentra-data000'.slice(0, 36);
+const SENTRA_SERVICE_UUID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+const SENTRA_CHARACTERISTIC_UUID = 'a1b2c3d4-e5f6-4789-abcd-ef0123456789';
 
 export class SyncManager {
   private peers: Map<string, SyncPeer> = new Map();

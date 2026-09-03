@@ -7,7 +7,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          tensorflow: ['@tensorflow/tfjs', '@tensorflow-models/coco-ssd'],
           react: ['react', 'react-dom'],
         },
       },
