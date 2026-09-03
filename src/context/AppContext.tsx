@@ -50,6 +50,7 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(() => {
+    const envApiKey = import.meta.env.VITE_GEMINI_API_KEY ?? '';
     let savedGemini = false;
     let savedWorld = false;
     let savedApiKey = '';
@@ -58,14 +59,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       savedWorld = localStorage.getItem('sentra_world_enabled') === 'true';
       savedApiKey = localStorage.getItem('sentra_gemini_api_key') ?? '';
     } catch { /* localStorage unavailable */ }
-    if (savedGemini && savedApiKey) geminiService.setApiKey(savedApiKey);
-    geminiService.setRemoteEnabled(savedGemini && !!savedApiKey);
+
+    const effectiveKey = savedApiKey || envApiKey;
+    const geminiOn = savedGemini || (!savedApiKey && !!envApiKey);
+
+    if (effectiveKey) geminiService.setApiKey(effectiveKey);
+    geminiService.setRemoteEnabled(geminiOn && !!effectiveKey);
     geminiService.setWorldConnected(savedWorld);
+
     return {
       activeModule: 'vision', voiceEnabled: true, humanVeto: false,
       powerMode: 'normal', syncTransport: 'offline',
       lastResponse: null, lastPerception: null, lastMoralEval: null,
-      evidenceCount: 0, geminiRemote: savedGemini && !!savedApiKey,
+      evidenceCount: 0, geminiRemote: geminiOn && !!effectiveKey,
       worldEnabled: savedWorld, isPassiveListening: false,
     };
   });
@@ -114,12 +120,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setGeminiRemote = useCallback((enabled: boolean, apiKey?: string) => {
+    const envApiKey = import.meta.env.VITE_GEMINI_API_KEY ?? '';
     if (enabled && apiKey) {
       geminiService.setApiKey(apiKey);
       geminiService.setRemoteEnabled(true);
       try { localStorage.setItem('sentra_gemini_enabled', 'true'); localStorage.setItem('sentra_gemini_api_key', apiKey); } catch { /* localStorage unavailable */ }
+    } else if (enabled && envApiKey) {
+      geminiService.setApiKey(envApiKey);
+      geminiService.setRemoteEnabled(true);
+      try { localStorage.setItem('sentra_gemini_enabled', 'true'); } catch { /* localStorage unavailable */ }
     } else {
-      geminiService.setApiKey('');
+      geminiService.setApiKey(envApiKey);
       geminiService.setRemoteEnabled(false);
       try { localStorage.setItem('sentra_gemini_enabled', 'false'); localStorage.removeItem('sentra_gemini_api_key'); } catch { /* localStorage unavailable */ }
     }
@@ -129,7 +140,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const toggleGeminiRemote = useCallback(() => {
     setState((s) => {
       const next = !s.geminiRemote;
-      geminiService.setRemoteEnabled(next);
+      const envApiKey = import.meta.env.VITE_GEMINI_API_KEY ?? '';
+      const savedApiKey = (() => { try { return localStorage.getItem('sentra_gemini_api_key') ?? ''; } catch { return ''; } })();
+      const effectiveKey = savedApiKey || envApiKey;
+      if (next && effectiveKey) {
+        geminiService.setApiKey(effectiveKey);
+        geminiService.setRemoteEnabled(true);
+      } else {
+        geminiService.setRemoteEnabled(false);
+      }
       try { localStorage.setItem('sentra_gemini_enabled', String(next)); } catch { /* localStorage unavailable */ }
       voiceManager.speak(next ? 'Gemini activado' : 'Gemini desactivado, modo local', 1);
       return { ...s, geminiRemote: next };

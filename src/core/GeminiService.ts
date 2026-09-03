@@ -43,18 +43,28 @@ export class GeminiService {
   private useRemote = false;
   private worldConnected = false;
   private offlineCache: Map<string, TCREIResponse> = new Map();
+  private envApiKey: string;
 
   constructor(config?: Partial<GeminiConfig>) {
     this.config = { model: 'gemini-2.0-flash', ...config };
     this.bridge = new TCREIBridge();
+    this.envApiKey = import.meta.env.VITE_GEMINI_API_KEY ?? '';
+    if (this.envApiKey) {
+      this.config.apiKey = this.envApiKey;
+      this.useRemote = true;
+    }
+  }
+
+  private getEffectiveApiKey(): string | undefined {
+    return this.config.apiKey || this.envApiKey;
   }
 
   setApiKey(key: string): void {
-    this.config.apiKey = key;
+    this.config.apiKey = key || this.envApiKey;
   }
 
   setRemoteEnabled(enabled: boolean): void {
-    this.useRemote = enabled;
+    this.useRemote = enabled && !!this.getEffectiveApiKey();
   }
 
   setWorldConnected(connected: boolean): void {
@@ -75,7 +85,8 @@ export class GeminiService {
     if (cached && !this.useRemote) return cached;
 
     const prompt = this.bridge.buildPrompt(module, perception, command);
-    if (this.useRemote && this.config.apiKey) {
+    const effectiveKey = this.getEffectiveApiKey();
+    if (this.useRemote && effectiveKey) {
       try {
         const raw = await this.callRemote(prompt);
         const response = this.bridge.parseResponse(raw, 'gemini');
@@ -94,7 +105,8 @@ export class GeminiService {
 
   private async callRemote(prompt: ReturnType<TCREIBridge['buildPrompt']>): Promise<string> {
     const formatted = this.bridge.formatForLLM(prompt);
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${this.config.apiKey}`;
+    const key = this.getEffectiveApiKey();
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${key}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
