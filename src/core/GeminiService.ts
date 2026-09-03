@@ -42,6 +42,7 @@ export class GeminiService {
   private bridge: TCREIBridge;
   private useRemote = false;
   private worldConnected = false;
+  private offlineCache: Map<string, TCREIResponse> = new Map();
 
   constructor(config?: Partial<GeminiConfig>) {
     this.config = { model: 'gemini-2.0-flash', ...config };
@@ -69,16 +70,26 @@ export class GeminiService {
   }
 
   async query(module: string, perception: string, command: string): Promise<TCREIResponse> {
+    const cacheKey = `${module}:${command}:${perception}`;
+    const cached = this.offlineCache.get(cacheKey);
+    if (cached && !this.useRemote) return cached;
+
     const prompt = this.bridge.buildPrompt(module, perception, command);
     if (this.useRemote && this.config.apiKey) {
       try {
         const raw = await this.callRemote(prompt);
-        return this.bridge.parseResponse(raw, 'gemini');
+        const response = this.bridge.parseResponse(raw, 'gemini');
+        this.offlineCache.set(cacheKey, response);
+        return response;
       } catch {
-        return this.localResponse(prompt, command);
+        const local = this.localResponse(prompt, command, perception);
+        this.offlineCache.set(cacheKey, local);
+        return local;
       }
     }
-    return this.localResponse(prompt, command);
+    const local = this.localResponse(prompt, command, perception);
+    if (!this.useRemote) this.offlineCache.set(cacheKey, local);
+    return local;
   }
 
   private async callRemote(prompt: ReturnType<TCREIBridge['buildPrompt']>): Promise<string> {
@@ -100,9 +111,16 @@ export class GeminiService {
 
   private localResponse(
     prompt: ReturnType<TCREIBridge['buildPrompt']>,
-    command: string
+    command: string,
+    perception: string
   ): TCREIResponse {
     const lower = command.toLowerCase();
+
+    if (perception && perception !== 'Sin percepcion activa') {
+      const detectionResp = this.generateOfflineResponse(perception, lower);
+      if (detectionResp) return this.bridge.parseResponse(detectionResp, 'local');
+    }
+
     let best: GeminiCandidate | null = null;
     for (const entry of LOCAL_KNOWLEDGE) {
       const score = entry.keywords.reduce(
@@ -117,6 +135,38 @@ export class GeminiService {
       ? best.text
       : `Procesando "${command}" en contexto de ${prompt.context}. Modo offline activo.`;
     return this.bridge.parseResponse(text, 'local');
+  }
+
+  private generateOfflineResponse(perception: string, command: string): string | null {
+    const lower = command.toLowerCase();
+    const wantsDescription = ['describir', 'describeme', 'que ves', 'que detectas', 'ver', 'detectar', 'escena', 'que hay']
+      .some((kw) => lower.includes(kw));
+
+    const personMatch = perception.match(/(\d+)\s+persona/i);
+    const objectsMatch = perception.match(/Objetos:\s*(.+)/i);
+
+    if (personMatch || objectsMatch) {
+      const parts: string[] = [];
+      if (personMatch) {
+        const count = parseInt(personMatch[1], 10);
+        parts.push(count === 1 ? 'Veo una persona' : `Veo ${count} personas`);
+      }
+      if (objectsMatch) {
+        const objects = objectsMatch[1].split(',').map((o) => o.trim()).filter(Boolean);
+        if (objects.length > 0) {
+          parts.push(`Detecto: ${objects.join(', ')}`);
+        }
+      }
+      if (parts.length > 0) {
+        return parts.join('. ') + '. Modo offline activo.';
+      }
+    }
+
+    if (wantsDescription && perception !== 'Sin datos sensoriales') {
+      return `Percepcion actual: ${perception}. Modo offline activo.`;
+    }
+
+    return null;
   }
 }
 

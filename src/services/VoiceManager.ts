@@ -5,6 +5,8 @@ export interface VoiceCue {
   timestamp: number;
 }
 
+export type PassiveListenCallback = (transcript: string) => void;
+
 const VOICE_STORAGE_KEY = 'sentra_voice_uri';
 
 export class VoiceManager {
@@ -16,6 +18,10 @@ export class VoiceManager {
   private enabled = true;
   private selectedVoiceURI: string | null = null;
   private voicesLoaded = false;
+  private passiveRecognition: SpeechRecognition | null = null;
+  private passiveActive = false;
+  private passiveCallback: PassiveListenCallback | null = null;
+  private passiveRestartTimer: number | null = null;
 
   constructor() {
     if ('speechSynthesis' in window) {
@@ -105,6 +111,71 @@ export class VoiceManager {
     if (this.synth) this.synth.cancel();
     this.current = null;
     this.queue = [];
+  }
+
+  startPassiveListening(callback: PassiveListenCallback): boolean {
+    if (this.passiveActive) return true;
+    const SRC =
+      (window as Window & { SpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ||
+      (window as Window & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition;
+    if (!SRC) return false;
+
+    this.passiveCallback = callback;
+    const recognition = new SRC();
+    recognition.lang = 'es-ES';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const last = event.results[event.results.length - 1];
+      if (last.isFinal) {
+        const transcript = last[0].transcript.trim();
+        if (transcript && this.passiveCallback) {
+          this.passiveCallback(transcript);
+        }
+      }
+    };
+    recognition.onend = () => {
+      if (this.passiveActive) {
+        this.passiveRestartTimer = window.setTimeout(() => {
+          if (this.passiveActive) {
+            try { recognition.start(); } catch { /* already started */ }
+          }
+        }, 300);
+      }
+    };
+    recognition.onerror = () => {
+      if (this.passiveActive && this.passiveRestartTimer === null) {
+        this.passiveRestartTimer = window.setTimeout(() => {
+          this.passiveRestartTimer = null;
+          if (this.passiveActive) {
+            try { recognition.start(); } catch { /* already started */ }
+          }
+        }, 1000);
+      }
+    };
+
+    this.passiveRecognition = recognition;
+    this.passiveActive = true;
+    try { recognition.start(); } catch { /* already started */ }
+    return true;
+  }
+
+  stopPassiveListening(): void {
+    this.passiveActive = false;
+    if (this.passiveRestartTimer !== null) {
+      clearTimeout(this.passiveRestartTimer);
+      this.passiveRestartTimer = null;
+    }
+    if (this.passiveRecognition) {
+      try { this.passiveRecognition.stop(); } catch { /* not started */ }
+      this.passiveRecognition = null;
+    }
+    this.passiveCallback = null;
+  }
+
+  isPassiveListening(): boolean {
+    return this.passiveActive;
   }
 
   pause(): void { if (this.synth) this.synth.pause(); }

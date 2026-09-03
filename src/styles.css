@@ -126,6 +126,22 @@ body {
 .response-source { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; }
 .evidence-counter { text-align: center; font-size: 0.8rem; color: var(--text-dim); }
 
+.passive-listening-indicator {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; background: rgba(0, 212, 255, 0.08);
+  border-radius: var(--radius-sm); border: 1px solid var(--primary-dark);
+  font-size: 0.8rem; color: var(--primary-light);
+}
+.pulse-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--primary); animation: pulseDot 1.2s infinite;
+  flex-shrink: 0;
+}
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.5); }
+  50% { opacity: 0.5; box-shadow: 0 0 0 6px rgba(0, 212, 255, 0); }
+}
+
 .camera-stream {
   position: relative; border-radius: var(--radius); overflow: hidden;
   background: #000; aspect-ratio: 4/3;

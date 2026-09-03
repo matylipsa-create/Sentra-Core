@@ -422,10 +422,16 @@ function SecurityView() {
 
 function VisionView() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { activeModule } = useApp();
+  const { activeModule, setLastPerception } = useApp();
   const { profile } = usePowerMode();
   const isActive = activeModule === 'vision' && profile.enableVision;
   const sensorState = useRealModeSensors(videoRef, isActive, profile.visionIntervalMs || 5000);
+
+  useEffect(() => {
+    if (sensorState.perception) {
+      setLastPerception(sensorState.perception);
+    }
+  }, [sensorState.perception, setLastPerception]);
 
   return (
     <div className="module-content vision-view">

@@ -18,6 +18,7 @@ export function AccessibleMinimalUI() {
     lastResponse, lastMoralEval, evidenceCount,
     processCommand, toggleVoice, toggleHumanVeto, setModule,
     geminiRemote, toggleGeminiRemote, worldEnabled, toggleWorldConnection,
+    isPassiveListening, togglePassiveListening,
   } = useApp();
 
   const [listening, setListening] = useState(false);
@@ -43,6 +44,23 @@ export function AccessibleMinimalUI() {
       recognitionRef.current = recognition;
     }
   }, [processCommand]);
+
+  useEffect(() => {
+    if (isPassiveListening) {
+      const ok = voiceManager.startPassiveListening((transcript) => {
+        processCommand(transcript);
+      });
+      if (!ok) {
+        voiceManager.speak('Escucha pasiva no disponible en este dispositivo', 2);
+        togglePassiveListening();
+      }
+    } else {
+      voiceManager.stopPassiveListening();
+    }
+    return () => {
+      voiceManager.stopPassiveListening();
+    };
+  }, [isPassiveListening, processCommand, togglePassiveListening]);
 
   const handleVoiceButton = () => {
     const now = Date.now();
@@ -156,7 +174,22 @@ export function AccessibleMinimalUI() {
         >
           {worldEnabled ? '\u{1F310} Mundo ON' : '\u{1F310} Mundo OFF'}
         </button>
+        <button
+          className={`toggle-btn ${isPassiveListening ? 'on' : 'off'}`}
+          onClick={togglePassiveListening}
+          aria-pressed={isPassiveListening}
+          aria-label="Activar o desactivar escucha pasiva"
+        >
+          {isPassiveListening ? '\u{1F3A4} Escucha ON' : '\u{1F3A4} Escucha OFF'}
+        </button>
       </div>
+
+      {isPassiveListening && (
+        <div className="passive-listening-indicator" role="status" aria-live="polite">
+          <span className="pulse-dot" aria-hidden="true" />
+          Escucha pasiva activa. Habla y Sentra Core respondera.
+        </div>
+      )}
 
       {(lastResponse || lastMoralEval) && (
         <div className="response-area" role="status" aria-live="polite">

@@ -14,6 +14,24 @@
 - **Multiplataforma**: Celular + PC, UI adaptativa
 - **Sincronizacion P2P**: Syncthing / Bluetooth Mesh / LoRa
 
+## Deteccion Offline
+
+La deteccion de objetos (COCO-SSD) se ejecuta **siempre localmente**, sin depender de la conexion a internet. El modo offline solo afecta a la IA generativa (Gemini), no a la percepcion.
+
+- Cuando hay internet + Gemini ON: respuestas en lenguaje natural generadas por la IA
+- Cuando no hay internet o Gemini OFF: respuestas contextuales basadas en los objetos detectados (ej: "Veo una persona", "Detecto: TV, persona, silla")
+- Cache de respuestas offline en memoria para respuesta instantanea (< 200ms)
+
+## Voz Bilateral
+
+Sentra Core soporta comunicacion de voz en dos direcciones:
+
+- **Sintesis de voz (TTS)**: El agente habla usando SpeechSynthesis con selector de voces del sistema
+- **Escucha pasiva (STT)**: Cuando se activa "Escucha ON", el agente escucha continuamente usando SpeechRecognition y procesa comandos de voz automaticamente
+- **Comando manual**: Boton de voz para comandos puntuales sin escucha pasiva
+
+El filtro etico (MoralNode) se aplica a **todos** los comandos, tanto de voz como de texto.
+
 ## Modos de Operacion
 
 | Modo | Descripcion |
@@ -36,13 +54,13 @@ src/
     MoralNode.ts         Filtro etico (4 reglas)
     EVOLIS.ts            Hash chain + trazabilidad inalterable
     TCREIBridge.ts       Puente percepcion <-> lenguaje
-    GeminiService.ts     IA con fallback local
+    GeminiService.ts     IA con fallback local + cache offline
     PerceptionEngine.ts  Vision, audio, IMU, STF, GPS
     DeviceManager.ts     Deteccion de capacidades
     PowerManager.ts      Ultra ahorro / normal / alto rendimiento
     SyncManager.ts       Sincronizacion P2P
   services/
-    VoiceManager.ts      Sintesis de voz con cola y dedupe
+    VoiceManager.ts      Sintesis + escucha pasiva + selector de voz
     StorageService.ts    IndexedDB + exportacion/importacion
     SensorService.ts     GPS, IMU, barometro, luz, brujula
   hooks/
@@ -50,10 +68,10 @@ src/
     useDeviceCapabilities Deteccion de dispositivo
     usePowerMode         Gestion de energia
   context/
-    AppContext.tsx       Estado global
+    AppContext.tsx       Estado global + persistencia de settings
     ToastContext.tsx     Notificaciones
   components/
-    AccessibleMinimalUI  1 boton, voz, vibracion, doble toque, ARIA
+    AccessibleMinimalUI  Botones, voz bilateral, vibracion, ARIA
     AdaptiveUI           Tactil vs mouse/teclado
     CameraStream         Camara en vivo + detecciones
     DemoModeBanner       Metricas del sistema
@@ -84,7 +102,7 @@ npm run preview     # Preview PWA
 
 1. **NO_VIOLENCE**: Bloquea comandos con lenguaje violento
 2. **PRIVACY_FIRST**: Bloquea solicitudes de datos sensibles
-3. **OFFLINE_ONLY**: Verifica operacion offline
+3. **OFFLINE_ONLY**: Verifica operacion offline (activa con externalRequest: true)
 4. **HUMAN_VETO**: El veto humano bloquea todas las acciones
 
 ## Trazabilidad (EVOLIS)
@@ -101,3 +119,12 @@ npm run preview     # Preview PWA
 - Service Worker con cache offline-first
 - Manifest con iconos y colores de tema
 - Funciona sin conexion a internet
+
+## Preparacion para Verticales
+
+El motor Sentra Core esta listo para ser integrado en las aplicaciones verticales:
+
+- **Sentinel**: Modo de seguridad y monitoreo con sensores + EVOLIS
+- **Vision**: Asistencia visual con deteccion offline + descripcion por voz
+
+Ambas verticales pueden reutilizar el motor de percepcion, el filtro etico, la trazabilidad EVOLIS, y el sistema de voz bilateral.

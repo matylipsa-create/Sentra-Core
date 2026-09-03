@@ -27,6 +27,7 @@ export interface AppState {
   evidenceCount: number;
   geminiRemote: boolean;
   worldEnabled: boolean;
+  isPassiveListening: boolean;
 }
 
 interface AppContextValue extends AppState {
@@ -39,6 +40,8 @@ interface AppContextValue extends AppState {
   setGeminiRemote: (enabled: boolean, apiKey?: string) => void;
   toggleGeminiRemote: () => void;
   toggleWorldConnection: () => void;
+  setLastPerception: (perception: PerceptionData) => void;
+  togglePassiveListening: () => void;
   exportData: () => Promise<void>;
   getEvidence: () => EVOLISEvidence[];
 }
@@ -63,7 +66,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       powerMode: 'normal', syncTransport: 'offline',
       lastResponse: null, lastPerception: null, lastMoralEval: null,
       evidenceCount: 0, geminiRemote: savedGemini && !!savedApiKey,
-      worldEnabled: savedWorld,
+      worldEnabled: savedWorld, isPassiveListening: false,
     };
   });
 
@@ -164,6 +167,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (state.voiceEnabled) voiceManager.speak(response.text, 5);
   }, [state.activeModule, state.lastPerception, state.voiceEnabled]);
 
+  const setLastPerception = useCallback((perception: PerceptionData) => {
+    setState((s) => ({ ...s, lastPerception: perception }));
+  }, []);
+
+  const togglePassiveListening = useCallback(() => {
+    setState((s) => {
+      const next = !s.isPassiveListening;
+      try { localStorage.setItem('sentra_passive_listening', String(next)); } catch { /* localStorage unavailable */ }
+      voiceManager.speak(next ? 'Escucha pasiva activada' : 'Escucha pasiva desactivada', 1);
+      return { ...s, isPassiveListening: next };
+    });
+  }, []);
+
   const exportData = useCallback(async () => {
     await storageService.downloadExport();
   }, []);
@@ -173,7 +189,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value: AppContextValue = {
     ...state, setModule, toggleVoice, toggleHumanVeto,
     setPowerMode, setSyncTransport, processCommand, setGeminiRemote,
-    toggleGeminiRemote, toggleWorldConnection,
+    toggleGeminiRemote, toggleWorldConnection, setLastPerception,
+    togglePassiveListening,
     exportData, getEvidence,
   };
 
