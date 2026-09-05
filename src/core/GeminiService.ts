@@ -1,4 +1,5 @@
 import { TCREIBridge, TCREIResponse } from './TCREIBridge';
+import { bioSoftware } from './BioSoftwareInterface';
 
 export interface GeminiConfig {
   apiKey?: string;
@@ -34,6 +35,30 @@ const LOCAL_KNOWLEDGE: { keywords: string[]; response: string }[] = [
   {
     keywords: ['peligro', 'riesgo', 'alerta', 'emergencia'],
     response: 'Alerta: situacion de riesgo detectada. Manten la calma y sigue mis indicaciones.',
+  },
+  {
+    keywords: ['estres', 'ansiedad', 'nervios', 'preocupado', 'tension'],
+    response: 'Detecto estres. El reencuadre cognitivo puede ayudarte: lo que sientes es energia para actuar, no una amenaza. Prueba una sesion de coherencia cardiaca.',
+  },
+  {
+    keywords: ['respirar', 'respiracion', 'calmar', 'relajar', 'coherencia'],
+    response: 'Inicia coherencia cardiaca: inhala 4 segundos, exhala 6 segundos. 5 ciclos por minuto. Tu sistema nervioso se sincroniza con cada respiracion.',
+  },
+  {
+    keywords: ['placebo', 'creer', 'expectativa', 'mejorar'],
+    response: 'El placebo cognitivo funciona: tu cerebro responde a la expectativa de mejoria. Creer en la mejoria activa mecanismos de reparacion reales.',
+  },
+  {
+    keywords: ['neuroplasticidad', 'cambiar habito', 'aprender nuevo', 'reorganizar'],
+    response: 'Tu cerebro se reorganiza hasta los 100 anos. Cada repeticion fortalece conexiones neuronales. La practica deliberada crea nuevas rutas.',
+  },
+  {
+    keywords: ['epigenetica', 'genes', 'adn', 'herencia'],
+    response: 'Tus genes son el piano, tus habits son las manos que lo tocan. El estres cronico activa genes inflamatorios, la calma los silencia.',
+  },
+  {
+    keywords: ['inferencia activa', 'prediccion', 'incertidumbre', 'sorpresa'],
+    response: 'Tu cerebro predice lo que va a pasar y minimiza el error de prediccion. La sorpresa es informacion, integrarla reduce la incertidumbre.',
   },
 ];
 
@@ -128,6 +153,11 @@ export class GeminiService {
   ): TCREIResponse {
     const lower = command.toLowerCase();
 
+    if (prompt.context.startsWith('BioSoftware')) {
+      const bioResp = this.bioResponse(lower);
+      if (bioResp) return this.bridge.parseResponse(bioResp, 'local');
+    }
+
     if (perception && perception !== 'Sin percepcion activa') {
       const detectionResp = this.generateOfflineResponse(perception, lower);
       if (detectionResp) return this.bridge.parseResponse(detectionResp, 'local');
@@ -147,6 +177,30 @@ export class GeminiService {
       ? best.text
       : `Procesando "${command}" en contexto de ${prompt.context}. Modo offline activo.`;
     return this.bridge.parseResponse(text, 'local');
+  }
+
+  private bioResponse(lower: string): string | null {
+    const bioState = bioSoftware.getState();
+    if (bioState.activeProtocol) {
+      const reframe = bioSoftware.getReframe();
+      if (reframe) return reframe;
+    }
+    if (lower.includes('coherencia') || lower.includes('respirar') || lower.includes('calmar')) {
+      return 'Inicia coherencia cardiaca: inhala 4 segundos, exhala 6 segundos. 5 ciclos por minuto. Tu sistema nervioso se sincroniza con cada respiracion.';
+    }
+    if (lower.includes('estres') || lower.includes('ansiedad')) {
+      return 'El reencuadre cognitivo puede ayudarte: lo que sientes como estres es energia disponible para actuar, no una amenaza. Prueba una sesion de reencuadre.';
+    }
+    if (lower.includes('placebo')) {
+      return 'El placebo cognitivo funciona: tu cerebro responde a la expectativa de mejoria. Creer en la mejoria activa mecanismos de reparacion reales.';
+    }
+    if (lower.includes('habito') || lower.includes('neuroplasticidad')) {
+      return 'Tu cerebro se reorganiza con cada repeticion. La practica deliberada crea nuevas rutas neuronales. Nunca es tarde para cambiar.';
+    }
+    if (lower.includes('genes') || lower.includes('epigenetica')) {
+      return 'Tus genes son el piano, tus habits son las manos que lo tocan. El estres cronico activa genes inflamatorios, la calma los silencia.';
+    }
+    return null;
   }
 
   private generateOfflineResponse(perception: string, command: string): string | null {

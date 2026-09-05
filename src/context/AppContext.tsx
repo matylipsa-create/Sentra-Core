@@ -10,10 +10,11 @@ import { syncManager, SyncTransport } from '../core/SyncManager';
 import { voiceManager } from '../services/VoiceManager';
 import { storageService } from '../services/StorageService';
 import { PowerMode } from '../core/PowerManager';
+import { bioSoftware, BioProtocol, BioSession } from '../core/BioSoftwareInterface';
 
 export type ModuleName =
   | 'vision' | 'seguridad' | 'movimiento' | 'juego'
-  | 'aprendizaje' | 'impacto' | 'silencio' | 'evidencia';
+  | 'aprendizaje' | 'impacto' | 'silencio' | 'evidencia' | 'bio';
 
 export interface AppState {
   activeModule: ModuleName;
@@ -28,6 +29,11 @@ export interface AppState {
   geminiRemote: boolean;
   worldEnabled: boolean;
   isPassiveListening: boolean;
+  bioEnabled: boolean;
+  bioActiveProtocol: BioProtocol | null;
+  bioCurrentSession: BioSession | null;
+  bioSessions: BioSession[];
+  bioReframe: string | null;
 }
 
 interface AppContextValue extends AppState {
@@ -44,6 +50,10 @@ interface AppContextValue extends AppState {
   togglePassiveListening: () => void;
   exportData: () => Promise<void>;
   getEvidence: () => EVOLISEvidence[];
+  toggleBio: () => void;
+  startBioSession: (protocol: BioProtocol) => void;
+  stopBioSession: () => void;
+  getBioReframe: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -67,12 +77,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     geminiService.setRemoteEnabled(geminiOn && !!effectiveKey);
     geminiService.setWorldConnected(savedWorld);
 
+    let savedBio = false;
+    try {
+      savedBio = localStorage.getItem('sentra_bio_enabled') === 'true';
+    } catch { /* localStorage unavailable */ }
+    bioSoftware.setEnabled(savedBio);
+
     return {
       activeModule: 'vision', voiceEnabled: true, humanVeto: false,
       powerMode: 'normal', syncTransport: 'offline',
       lastResponse: null, lastPerception: null, lastMoralEval: null,
       evidenceCount: 0, geminiRemote: geminiOn && !!effectiveKey,
       worldEnabled: savedWorld, isPassiveListening: false,
+      bioEnabled: savedBio, bioActiveProtocol: null,
+      bioCurrentSession: null, bioSessions: [], bioReframe: null,
     };
   });
 
@@ -205,12 +223,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getEvidence = useCallback(() => evolis.getEntries(), []);
 
+  const toggleBio = useCallback(() => {
+    setState((s) => {
+      const next = !s.bioEnabled;
+      bioSoftware.setEnabled(next);
+      try { localStorage.setItem('sentra_bio_enabled', String(next)); } catch { /* localStorage unavailable */ }
+      voiceManager.speak(next ? 'BioSoftware activado' : 'BioSoftware desactivado', 1);
+      return { ...s, bioEnabled: next };
+    });
+  }, []);
+
+  const startBioSession = useCallback((protocol: BioProtocol) => {
+    const session = bioSoftware.startSession(protocol);
+    if (session) {
+      const def = bioSoftware.getProtocolDef(protocol);
+      voiceManager.speak(`Sesion de ${def?.label ?? protocol} iniciada. Respira y sigue las indicaciones.`, 2);
+    }
+    setState((s) => ({
+      ...s,
+      bioActiveProtocol: protocol,
+      bioCurrentSession: session,
+    }));
+  }, []);
+
+  const stopBioSession = useCallback(() => {
+    const session = bioSoftware.stopSession();
+    if (session) {
+      voiceManager.speak(`Sesion completada. Coherencia: ${Math.round(session.metrics.coherenceScore * 100)}%.`, 2);
+    }
+    const stats = bioSoftware.getState();
+    setState((s) => ({
+      ...s,
+      bioActiveProtocol: null,
+      bioCurrentSession: null,
+      bioSessions: stats.sessions,
+    }));
+  }, []);
+
+  const getBioReframe = useCallback(() => {
+    const reframe = bioSoftware.getReframe();
+    if (reframe) voiceManager.speak(reframe, 3);
+    setState((s) => ({ ...s, bioReframe: reframe }));
+  }, []);
+
   const value: AppContextValue = {
     ...state, setModule, toggleVoice, toggleHumanVeto,
     setPowerMode, setSyncTransport, processCommand, setGeminiRemote,
     toggleGeminiRemote, toggleWorldConnection, setLastPerception,
     togglePassiveListening,
     exportData, getEvidence,
+    toggleBio, startBioSession, stopBioSession, getBioReframe,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

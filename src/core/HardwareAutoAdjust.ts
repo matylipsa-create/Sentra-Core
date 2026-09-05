@@ -14,6 +14,8 @@ export interface HardwareProfile {
   enableBackgroundSync: boolean;
   sensorIntervalMs: number;
   visionIntervalMs: number;
+  enableBio: boolean;
+  bioSessionDuration: number;
 }
 
 export class HardwareAutoAdjust {
@@ -51,6 +53,8 @@ export class HardwareAutoAdjust {
           enableBackgroundSync: true,
           sensorIntervalMs: 500,
           visionIntervalMs: 1000,
+          enableBio: true,
+          bioSessionDuration: 300,
         };
       case 'high':
         return {
@@ -66,6 +70,8 @@ export class HardwareAutoAdjust {
           enableBackgroundSync: true,
           sensorIntervalMs: 1000,
           visionIntervalMs: 1000,
+          enableBio: true,
+          bioSessionDuration: 300,
         };
       case 'medium':
         return {
@@ -81,6 +87,8 @@ export class HardwareAutoAdjust {
           enableBackgroundSync: true,
           sensorIntervalMs: 3000,
           visionIntervalMs: 5000,
+          enableBio: true,
+          bioSessionDuration: 240,
         };
       case 'low':
       default:
@@ -97,6 +105,8 @@ export class HardwareAutoAdjust {
           enableBackgroundSync: false,
           sensorIntervalMs: 10000,
           visionIntervalMs: 0,
+          enableBio: true,
+          bioSessionDuration: 180,
         };
     }
   }

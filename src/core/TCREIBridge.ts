@@ -25,11 +25,13 @@ const MODULE_CONTEXTS: Record<string, string> = {
   impacto: 'Gestion de energia y harvesting',
   silencio: 'Comunicacion no verbal',
   evidencia: 'Trazabilidad y registro inmutable',
+  bio: 'BioSoftware: inferencia activa, placebos cognitivos, reencuadre cognitivo, neuroplasticidad, epigenetica, coherencia cardiaca',
 };
 
 export class TCREIBridge {
   buildPrompt(module: string, perception: string, command: string): TCREIPrompt {
     const context = MODULE_CONTEXTS[module] ?? 'Asistencia general';
+    const isBio = module === 'bio';
     return {
       context,
       perception,
@@ -40,7 +42,7 @@ export class TCREIBridge {
         constraints: [
           'Responder en espanol',
           'Ser conciso y directo',
-          'No inventar datos no presentes en la percepcion',
+          isBio ? 'Aplicar reencuadre cognitivo y placebo cognitivo cuando sea pertinente' : 'No inventar datos no presentes en la percepcion',
           'Priorizar la seguridad del usuario',
         ],
         expectedOutput: 'Respuesta clara y accionable en menos de 100 palabras',

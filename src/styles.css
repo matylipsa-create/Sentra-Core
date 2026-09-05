@@ -295,3 +295,102 @@ body {
 .touch .module-btn { min-width: 72px; padding: 10px 14px; }
 .touch .toggle-btn { padding: 10px 18px; font-size: 0.9rem; }
 .touch .action-btn { padding: 14px 22px; }
+
+.bio-protocol-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-2); margin: var(--space-2) 0;
+}
+.bio-protocol-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  padding: var(--space-2); background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); cursor: pointer; text-align: left; transition: all 0.2s;
+}
+.bio-protocol-card:hover {
+  border-color: var(--accent); box-shadow: 0 0 16px rgba(0, 255, 136, 0.15);
+}
+.bio-protocol-icon { font-size: 1.8rem; }
+.bio-protocol-card strong { font-size: 0.95rem; color: var(--accent); }
+.bio-protocol-desc { font-size: 0.78rem; color: var(--text-dim); line-height: 1.4; }
+.bio-protocol-duration {
+  font-size: 0.72rem; color: var(--primary); margin-top: 4px;
+  padding: 2px 8px; background: rgba(0, 212, 255, 0.1); border-radius: 10px;
+}
+
+.bio-session-active {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-2); background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius);
+}
+.bio-session-header {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.bio-session-header h3 { color: var(--accent); font-size: 1.1rem; }
+.bio-stop-btn { border-color: var(--error); color: var(--error); }
+.bio-stop-btn:hover { background: rgba(255, 68, 68, 0.1); }
+
+.bio-breath-guide {
+  display: flex; align-items: center; justify-content: center;
+  height: 160px; border-radius: 50%; width: 160px; margin: 0 auto;
+  background: rgba(0, 255, 136, 0.08); border: 2px solid var(--accent);
+  transition: all 4s ease-in-out;
+}
+.bio-breath-guide.bio-breath-inhale {
+  transform: scale(1.15); border-color: var(--primary);
+  background: rgba(0, 212, 255, 0.12); transition: transform 4s ease;
+}
+.bio-breath-guide.bio-breath-exhale {
+  transform: scale(0.9); border-color: var(--accent);
+  background: rgba(0, 255, 136, 0.06); transition: transform 5s ease;
+}
+.bio-breath-guide.bio-breath-hold {
+  transform: scale(1.05); border-color: var(--warning);
+  background: rgba(255, 170, 0, 0.08);
+}
+.bio-breath-text {
+  font-size: 1.4rem; font-weight: 600; color: var(--text-bright);
+}
+
+.bio-progress-bar {
+  height: 8px; background: var(--bg-elevated); border-radius: 4px;
+  overflow: hidden; border: 1px solid var(--border);
+}
+.bio-progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--accent), var(--primary));
+  transition: width 1s ease;
+}
+.bio-progress-text { font-size: 0.78rem; color: var(--text-dim); text-align: center; }
+
+.bio-metrics-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-1);
+}
+.bio-metric-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: var(--space-1); background: var(--bg-elevated);
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+}
+.bio-metric-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; }
+.bio-metric-value { font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+
+.bio-reframe {
+  padding: var(--space-2); background: var(--bg-elevated);
+  border-radius: var(--radius-sm); border-left: 3px solid var(--accent);
+  font-size: 0.9rem; line-height: 1.5; color: var(--text);
+}
+
+.bio-history { margin-top: var(--space-2); }
+.bio-history h3 { color: var(--primary); font-size: 1rem; margin-bottom: var(--space-1); }
+.bio-stats-row {
+  display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-1);
+  font-size: 0.8rem; color: var(--text-dim);
+}
+.bio-stats-row strong { color: var(--accent); }
+.bio-history-entry {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); margin-bottom: 4px; font-size: 0.8rem;
+}
+.bio-history-protocol { color: var(--accent); font-weight: 600; }
+.bio-history-coherence { color: var(--primary); }
+.bio-history-time { color: var(--text-dim); font-size: 0.72rem; }

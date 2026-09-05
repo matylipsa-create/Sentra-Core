@@ -1,9 +1,10 @@
 import { useApp } from '../context/AppContext';
 import { usePowerMode } from '../hooks/usePowerMode';
 import { useDeviceCapabilities } from '../hooks/useDeviceCapabilities';
+import { bioSoftware } from '../core/BioSoftwareInterface';
 
 export function DemoModeBanner() {
-  const { activeModule, evidenceCount, humanVeto, geminiRemote, worldEnabled } = useApp();
+  const { activeModule, evidenceCount, humanVeto, geminiRemote, worldEnabled, bioEnabled, bioActiveProtocol } = useApp();
   const { profile, batteryLevel, isCharging } = usePowerMode();
   const { capabilities } = useDeviceCapabilities();
 
@@ -38,6 +39,17 @@ export function DemoModeBanner() {
         <span className="banner-label">Mundo</span>
         <span className="banner-value">{worldEnabled ? 'ON' : 'OFF'}</span>
       </div>
+      {bioEnabled && (
+        <div className="demo-banner-section">
+          <span className="banner-label">Bio</span>
+          <span className="banner-value">{bioActiveProtocol ? bioActiveProtocol.replace(/_/g, ' ') : 'Listo'}</span>
+          {bioActiveProtocol && (
+            <span className="banner-detail">
+              {Math.round(bioSoftware.getState().cardiacCoherence * 100)}% coh
+            </span>
+          )}
+        </div>
+      )}
       {capabilities && (
         <div className="demo-banner-section">
           <span className="banner-label">Dispositivo</span>

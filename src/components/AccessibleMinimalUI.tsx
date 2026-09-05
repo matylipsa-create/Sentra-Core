@@ -8,6 +8,7 @@ const MODULES: { id: ModuleName; label: string; icon: string }[] = [
   { id: 'seguridad', label: 'Seguridad', icon: '\u{1F6E1}' },
   { id: 'movimiento', label: 'Movimiento', icon: '\u{1F9ED}' },
   { id: 'aprendizaje', label: 'Aprendizaje', icon: '\u{1F4DA}' },
+  { id: 'bio', label: 'Bio', icon: '\u{1F9EC}' },
   { id: 'evidencia', label: 'Evidencia', icon: '\u{1F4CB}' },
   { id: 'silencio', label: 'Silencio', icon: '\u{1F507}' },
 ];
@@ -19,6 +20,7 @@ export function AccessibleMinimalUI() {
     processCommand, toggleVoice, toggleHumanVeto, setModule,
     geminiRemote, toggleGeminiRemote, worldEnabled, toggleWorldConnection,
     isPassiveListening, togglePassiveListening,
+    bioEnabled, toggleBio,
   } = useApp();
 
   const [listening, setListening] = useState(false);
@@ -181,6 +183,14 @@ export function AccessibleMinimalUI() {
           aria-label="Activar o desactivar escucha pasiva"
         >
           {isPassiveListening ? '\u{1F3A4} Escucha ON' : '\u{1F3A4} Escucha OFF'}
+        </button>
+        <button
+          className={`toggle-btn ${bioEnabled ? 'on' : 'off'}`}
+          onClick={toggleBio}
+          aria-pressed={bioEnabled}
+          aria-label="Activar o desactivar BioSoftware"
+        >
+          {bioEnabled ? '\u{1F9EC} Bio ON' : '\u{1F9EC} Bio OFF'}
         </button>
       </div>
 

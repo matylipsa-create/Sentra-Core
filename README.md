@@ -10,9 +10,10 @@
 - **Veto humano estricto**: El veto humano siempre tiene prioridad sobre cualquier accion
 - **Soberania del dato**: Los datos pertenecen al usuario, almacenados localmente
 - **Trazabilidad inalterable**: EVOLIS + firmas Dilithium (ECDSA P-256)
-- **Modularidad**: Navaja suiza con 8 modos de operacion
+- **Modularidad**: Navaja suiza con 9 modos de operacion
 - **Multiplataforma**: Celular + PC, UI adaptativa
 - **Sincronizacion P2P**: Syncthing / Bluetooth Mesh / LoRa
+- **Bio-Software Interface**: Inferencia activa, placebos cognitivos, neuroplasticidad, epigenetica, reencuadre cognitivo y coherencia cardiaca
 
 ## Deteccion Offline
 
@@ -44,6 +45,7 @@ El filtro etico (MoralNode) se aplica a **todos** los comandos, tanto de voz com
 | impacto | STF + ARS Evolved + energy harvesting |
 | silencio | Vibracion + LEDs (sin voz) |
 | evidencia | EVOLIS + hash chain + exportacion |
+| bio | Inferencia activa, placebos cognitivos, neuroplasticidad, epigenetica, coherencia cardiaca |
 
 ## Arquitectura
 
@@ -59,6 +61,8 @@ src/
     DeviceManager.ts     Deteccion de capacidades
     PowerManager.ts      Ultra ahorro / normal / alto rendimiento
     SyncManager.ts       Sincronizacion P2P
+    BioSoftwareInterface.ts  Inferencia activa, placebos, reencuadre, coherencia cardiaca
+    HardwareAutoAdjust.ts  Auto-ajuste segun hardware (incluye Bio)
   services/
     VoiceManager.ts      Sintesis + escucha pasiva + selector de voz
     StorageService.ts    IndexedDB + exportacion/importacion
@@ -127,4 +131,17 @@ El motor Sentra Core esta listo para ser integrado en las aplicaciones verticale
 - **Sentinel**: Modo de seguridad y monitoreo con sensores + EVOLIS
 - **Vision**: Asistencia visual con deteccion offline + descripcion por voz
 
-Ambas verticales pueden reutilizar el motor de percepcion, el filtro etico, la trazabilidad EVOLIS, y el sistema de voz bilateral.
+Ambas verticales pueden reutilizar el motor de percepcion, el filtro etico, la trazabilidad EVOLIS, el sistema de voz bilateral, y la capa de BioSoftware.
+
+## BioSoftware (BioSoftwareInterface)
+
+Capa funcional que optimiza el "hardware biologico" del usuario:
+
+- **Coherencia cardiaca**: Respiracion guiada 5.5 bpm con guia visual (inhala/exhala)
+- **Placebo cognitivo**: Refuerzo de expectativas positivas
+- **Reencuadre cognitivo**: Cambio de perspectiva ante estres o ansiedad
+- **Inferencia activa**: Prediccion y minimizacion de error
+- **Neuroplasticidad**: Ejercicios de formacion de conexiones neuronales
+- **Epigenetica**: Modulacion de expresion genetica mediante habits
+
+Cada protocolo genera sesiones con metricas (coherencia, estres, enfoque, ciclos respiratorios) y reencuadres contextuales. Las sesiones se registran en EVOLIS.

@@ -16,6 +16,7 @@ import { syncManager, SyncTransport } from './core/SyncManager';
 import { deviceManager } from './core/DeviceManager';
 import { PowerMode } from './core/PowerManager';
 import { voiceManager } from './services/VoiceManager';
+import { bioSoftware, BioProtocol } from './core/BioSoftwareInterface';
 
 function EvidenceView() {
   const { getEvidence, exportData } = useApp();
@@ -452,6 +453,146 @@ function VisionView() {
   );
 }
 
+function BioView() {
+  const {
+    bioEnabled, bioActiveProtocol, bioCurrentSession, bioSessions, bioReframe,
+    startBioSession, stopBioSession, getBioReframe, toggleBio,
+  } = useApp();
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!bioCurrentSession) return;
+    const interval = window.setInterval(() => {
+      const elapsed = (Date.now() - bioCurrentSession.startedAt) / 1000;
+      bioSoftware.tick(elapsed * 1000);
+      setTick((t) => t + 1);
+      if (bioSoftware.getState().currentSession === null) {
+        stopBioSession();
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [bioCurrentSession, stopBioSession]);
+
+  if (!bioEnabled) {
+    return (
+      <div className="module-content bio-view">
+        <h2>BioSoftware</h2>
+        <p className="empty-state">BioSoftware esta desactivado. Activalo con el boton Bio ON en los controles.</p>
+        <button className="action-btn" onClick={toggleBio}>
+          Activar BioSoftware
+        </button>
+      </div>
+    );
+  }
+
+  const protocols = bioSoftware.getProtocols();
+  const bioState = bioSoftware.getState();
+  const breathPhase = bioSoftware.getBreathPhase();
+  const progress = bioSoftware.getProgress();
+  const stats = bioSoftware.getStats();
+
+  return (
+    <div className="module-content bio-view">
+      <h2>BioSoftware</h2>
+      <p>Inferencia activa, placebos cognitivos, reencuadre cognitivo, neuroplasticidad, epigenetica y coherencia cardiaca.</p>
+
+      {!bioActiveProtocol && (
+        <div className="bio-protocol-grid">
+          {protocols.map((p) => (
+            <button
+              key={p.id}
+              className="bio-protocol-card"
+              onClick={() => startBioSession(p.id as BioProtocol)}
+              aria-label={`Iniciar ${p.label}`}
+            >
+              <span className="bio-protocol-icon" aria-hidden="true">{p.icon}</span>
+              <strong>{p.label}</strong>
+              <span className="bio-protocol-desc">{p.description}</span>
+              <span className="bio-protocol-duration">{Math.round(p.defaultDuration / 60)} min</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {bioCurrentSession && (
+        <div className="bio-session-active">
+          <div className="bio-session-header">
+            <h3>{protocols.find((p) => p.id === bioActiveProtocol)?.label}</h3>
+            <button className="action-btn bio-stop-btn" onClick={stopBioSession}>
+              Detener
+            </button>
+          </div>
+
+          {bioActiveProtocol === 'cardiac_coherence' && breathPhase && (
+            <div className={`bio-breath-guide bio-breath-${breathPhase}`} aria-live="polite">
+              <span className="bio-breath-text">
+                {breathPhase === 'inhale' ? 'Inhala' : breathPhase === 'exhale' ? 'Exhala' : 'Manten'}
+              </span>
+            </div>
+          )}
+
+          <div className="bio-progress-bar">
+            <div className="bio-progress-fill" style={{ width: `${progress * 100}%` }} />
+          </div>
+          <div className="bio-progress-text">{Math.round(progress * 100)}% completado</div>
+
+          <div className="bio-metrics-grid">
+            <div className="bio-metric-card">
+              <span className="bio-metric-label">Coherencia</span>
+              <span className="bio-metric-value">{Math.round(bioState.cardiacCoherence * 100)}%</span>
+            </div>
+            <div className="bio-metric-card">
+              <span className="bio-metric-label">Ciclos</span>
+              <span className="bio-metric-value">{bioCurrentSession.metrics.breathCycles}</span>
+            </div>
+            <div className="bio-metric-card">
+              <span className="bio-metric-label">Estres</span>
+              <span className="bio-metric-value">{Math.round(bioState.stressLevel * 100)}%</span>
+            </div>
+            <div className="bio-metric-card">
+              <span className="bio-metric-label">Enfoque</span>
+              <span className="bio-metric-value">{Math.round(bioState.focusLevel * 100)}%</span>
+            </div>
+          </div>
+
+          {bioReframe && (
+            <div className="bio-reframe" aria-live="polite">
+              <p>{bioReframe}</p>
+            </div>
+          )}
+
+          <button className="action-btn" onClick={getBioReframe}>
+            Nuevo reencuadre
+          </button>
+        </div>
+      )}
+
+      {bioSessions.length > 0 && !bioCurrentSession && (
+        <div className="bio-history">
+          <h3>Historial de sesiones</h3>
+          <div className="bio-stats-row">
+            <span>Total: <strong>{stats.totalSessions}</strong></span>
+            <span>Coherencia media: <strong>{Math.round(stats.avgCoherence * 100)}%</strong></span>
+            <span>Reencuadres: <strong>{stats.totalReframes}</strong></span>
+            <span>Ciclos: <strong>{stats.totalBreathCycles}</strong></span>
+          </div>
+          {bioSessions.slice(-5).reverse().map((s) => (
+            <div key={s.id} className="bio-history-entry">
+              <span className="bio-history-protocol">
+                {protocols.find((p) => p.id === s.protocol)?.label ?? s.protocol}
+              </span>
+              <span className="bio-history-coherence">{Math.round(s.metrics.coherenceScore * 100)}% coh</span>
+              <span className="bio-history-time">
+                {new Date(s.startedAt).toLocaleString('es-ES')}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MainContent() {
   const { activeModule } = useApp();
   const { capabilities } = useDeviceCapabilities();
@@ -479,6 +620,7 @@ function MainContent() {
   if (activeModule === 'movimiento') return <MovementView />;
   if (activeModule === 'impacto') return <ImpactView />;
   if (activeModule === 'seguridad') return <SecurityView />;
+  if (activeModule === 'bio') return <BioView />;
   return null;
 }
 

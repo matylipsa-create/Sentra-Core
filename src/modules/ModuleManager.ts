@@ -19,6 +19,7 @@ export const MODULE_DEFS: ModuleDef[] = [
   { id: 'impacto', label: 'Impacto', description: 'STF + ARS Evolved + energy harvesting', icon: '\u{26A1}', requiresCamera: false, requiresGPS: false, requiresSensors: true },
   { id: 'silencio', label: 'Silencio', description: 'Vibracion + LEDs (sin voz)', icon: '\u{1F507}', requiresCamera: false, requiresGPS: false, requiresSensors: true },
   { id: 'evidencia', label: 'Evidencia', description: 'EVOLIS + hash chain + exportacion', icon: '\u{1F4CB}', requiresCamera: false, requiresGPS: false, requiresSensors: false },
+  { id: 'bio', label: 'Bio', description: 'Inferencia activa, placebos cognitivos, neuroplasticidad, coherencia cardiaca', icon: '\u{1F9EC}', requiresCamera: false, requiresGPS: false, requiresSensors: false },
 ];
 
 export class ModuleManager {

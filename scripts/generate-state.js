@@ -1,5 +1,6 @@
 import { moralNode } from '../src/core/MoralNode';
 import { evolis } from '../src/core/EVOLIS';
+import { bioSoftware } from '../src/core/BioSoftwareInterface';
 
 async function main() {
   console.log('=== Sentra Core State Generator ===\n');
@@ -28,6 +29,24 @@ async function main() {
   console.log(`  Entries: ${stats.totalEntries}`);
   console.log(`  Verified: ${verified}`);
   console.log(`  Modules: ${stats.modules.join(', ')}`);
+  console.log();
+
+  console.log('BioSoftware Protocols:');
+  bioSoftware.setEnabled(true);
+  for (const p of bioSoftware.getProtocols()) {
+    console.log(`  ${p.label}: ${p.description} (${Math.round(p.defaultDuration / 60)} min)`);
+  }
+  const session = bioSoftware.startSession('cardiac_coherence');
+  if (session) {
+    bioSoftware.tick(120000);
+    const reframe = bioSoftware.getReframe();
+    console.log(`  Session started: ${session.protocol}`);
+    console.log(`  Reframe: ${reframe}`);
+    bioSoftware.stopSession();
+  }
+  const bioStats = bioSoftware.getStats();
+  console.log(`  Total sessions: ${bioStats.totalSessions}`);
+  console.log(`  Avg coherence: ${Math.round(bioStats.avgCoherence * 100)}%`);
   console.log();
 
   console.log('State generation complete.');
