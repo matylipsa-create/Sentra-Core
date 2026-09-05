@@ -4,7 +4,6 @@ import { ToastProvider, useToast } from './context/ToastContext';
 import { AdaptiveUI } from './components/AdaptiveUI';
 import { AccessibleMinimalUI } from './components/AccessibleMinimalUI';
 import { CameraStream } from './components/CameraStream';
-import { DemoModeBanner } from './components/DemoModeBanner';
 import { useRealModeSensors } from './hooks/useRealModeSensors';
 import { usePowerMode } from './hooks/usePowerMode';
 import { useDeviceCapabilities } from './hooks/useDeviceCapabilities';
@@ -17,6 +16,53 @@ import { deviceManager } from './core/DeviceManager';
 import { PowerMode } from './core/PowerManager';
 import { voiceManager } from './services/VoiceManager';
 import { bioSoftware, BioProtocol } from './core/BioSoftwareInterface';
+import { usePowerMode as usePowerModeHook } from './hooks/usePowerMode';
+
+function AccessibleMinimalHeader() {
+  const { activeModule, evidenceCount, humanVeto, geminiRemote, worldEnabled, bioEnabled, bioActiveProtocol } = useApp();
+  const { profile, batteryLevel, isCharging } = usePowerModeHook();
+  const { capabilities } = useDeviceCapabilities();
+
+  const bioCoherence = bioEnabled ? Math.round(bioSoftware.getState().cardiacCoherence * 100) : null;
+
+  return (
+    <header className="accessible-header" role="banner" aria-label="Estado general del sistema Sentra Core">
+      <div className="header-left">
+        <span className="header-module" aria-label={`Modulo activo: ${activeModule}`}>{activeModule}</span>
+      </div>
+      <div className="header-center">
+        {bioEnabled && (
+          <span className="header-chip header-chip--bio" aria-label={`BioSoftware activo, coherencia ${bioCoherence}%`}>
+            Bio {bioCoherence}%
+          </span>
+        )}
+        {humanVeto && (
+          <span className="header-chip header-chip--veto" aria-label="Veto humano activivo" role="alert">
+            Veto ON
+          </span>
+        )}
+        <span className="header-chip header-chip--ia" aria-label={`Inteligencia artificial: ${geminiRemote ? 'Gemini remoto' : 'local'}`}>
+          {geminiRemote ? 'IA: Gemini' : 'IA: Local'}
+        </span>
+      </div>
+      <div className="header-right">
+        {batteryLevel !== null && (
+          <span className="header-battery" aria-label={`Bateria ${Math.round(batteryLevel * 100)} por ciento${isCharging ? ', cargando' : ''}`}>
+            {Math.round(batteryLevel * 100)}%
+          </span>
+        )}
+        <span className="header-evolis" aria-label={`${evidenceCount} registros EVOLIS`}>
+          {evidenceCount}
+        </span>
+        {capabilities && (
+          <span className="header-connection" aria-label={capabilities.isOnline ? 'En linea' : 'Sin conexion'}>
+            {capabilities.isOnline ? '\u{1F310}' : '\u{1F567}'}
+          </span>
+        )}
+      </div>
+    </header>
+  );
+}
 
 function EvidenceView() {
   const { getEvidence, exportData } = useApp();
@@ -392,10 +438,7 @@ function SyncControls() {
           <button
             className="action-btn"
             onClick={async () => {
-              const ok = await syncManager.connectBluetooth();
-              if (!ok) {
-                /* toast handled by caller in real usage */
-              }
+              await syncManager.connectBluetooth();
             }}
           >
             Conectar Bluetooth
@@ -628,7 +671,7 @@ function SettingsPanel() {
   const {
     geminiRemote, setGeminiRemote, toggleGeminiRemote,
     humanVeto, toggleHumanVeto, voiceEnabled, toggleVoice,
-    worldEnabled, toggleWorldConnection,
+    worldEnabled, toggleWorldConnection, bioEnabled, toggleBio,
   } = useApp();
   const [apiKey, setApiKey] = useState('');
   const [panelOpen, setPanelOpen] = useState(false);
@@ -680,6 +723,12 @@ function SettingsPanel() {
             <label>
               <input type="checkbox" checked={humanVeto} onChange={toggleHumanVeto} />
               Veto humano
+            </label>
+          </div>
+          <div className="setting-row">
+            <label>
+              <input type="checkbox" checked={bioEnabled} onChange={toggleBio} />
+              BioSoftware
             </label>
           </div>
           <div className="setting-row">
@@ -762,7 +811,7 @@ function AppInner() {
   useHardwareAutoAdjust();
   return (
     <AdaptiveUI>
-      <DemoModeBanner />
+      <AccessibleMinimalHeader />
       <main className="app-main">
         <MainContent />
       </main>

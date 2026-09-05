@@ -1,228 +1,68 @@
-import { useEffect, useRef, useState } from 'react';
-import { useApp, ModuleName } from '../context/AppContext';
-import { voiceManager } from '../services/VoiceManager';
+import { useState } from 'react';
+import { useApp } from '../context/AppContext';
+import { VoiceOrbButton } from './VoiceOrbButton';
+import { TactileModuleDrawer } from './TactileModuleDrawer';
 import { deviceManager } from '../core/DeviceManager';
-
-const MODULES: { id: ModuleName; label: string; icon: string }[] = [
-  { id: 'vision', label: 'Vision', icon: '\u{1F441}' },
-  { id: 'seguridad', label: 'Seguridad', icon: '\u{1F6E1}' },
-  { id: 'movimiento', label: 'Movimiento', icon: '\u{1F9ED}' },
-  { id: 'aprendizaje', label: 'Aprendizaje', icon: '\u{1F4DA}' },
-  { id: 'bio', label: 'Bio', icon: '\u{1F9EC}' },
-  { id: 'evidencia', label: 'Evidencia', icon: '\u{1F4CB}' },
-  { id: 'silencio', label: 'Silencio', icon: '\u{1F507}' },
-];
+import { bioSoftware } from '../core/BioSoftwareInterface';
 
 export function AccessibleMinimalUI() {
   const {
-    activeModule, voiceEnabled, humanVeto,
-    lastResponse, lastMoralEval, evidenceCount,
-    processCommand, toggleVoice, toggleHumanVeto, setModule,
-    geminiRemote, toggleGeminiRemote, worldEnabled, toggleWorldConnection,
-    isPassiveListening, togglePassiveListening,
-    bioEnabled, toggleBio,
+    activeModule, lastResponse, lastMoralEval, evidenceCount,
+    humanVeto, bioEnabled, bioActiveProtocol,
   } = useApp();
 
-  const [listening, setListening] = useState(false);
-  const [textInput, setTextInput] = useState('');
-  const [lastTapTime, setLastTapTime] = useState(0);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  useEffect(() => {
-    const SRC =
-      (window as Window & { SpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ||
-      (window as Window & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition;
-    if (SRC) {
-      const recognition = new SRC();
-      recognition.lang = 'es-ES';
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = event.results[0][0].transcript;
-        processCommand(transcript);
-      };
-      recognition.onend = () => setListening(false);
-      recognition.onerror = () => setListening(false);
-      recognitionRef.current = recognition;
-    }
-  }, [processCommand]);
-
-  useEffect(() => {
-    if (isPassiveListening) {
-      const ok = voiceManager.startPassiveListening((transcript) => {
-        processCommand(transcript);
-      });
-      if (!ok) {
-        voiceManager.speak('Escucha pasiva no disponible en este dispositivo', 2);
-        togglePassiveListening();
-      }
-    } else {
-      voiceManager.stopPassiveListening();
-    }
-    return () => {
-      voiceManager.stopPassiveListening();
-    };
-  }, [isPassiveListening, processCommand, togglePassiveListening]);
-
-  const handleVoiceButton = () => {
-    const now = Date.now();
-    if (now - lastTapTime < 400) {
-      deviceManager.vibrate([50, 30, 50]);
-      toggleVoice();
-      return;
-    }
-    setLastTapTime(now);
-    if (listening) {
-      recognitionRef.current?.stop();
-      setListening(false);
-      return;
-    }
-    if (recognitionRef.current && voiceEnabled) {
-      try {
-        recognitionRef.current.start();
-        setListening(true);
-        deviceManager.vibrate(100);
-      } catch {
-        setListening(false);
-      }
-    } else if (!recognitionRef.current) {
-      voiceManager.speak('Reconocimiento de voz no disponible. Usa el campo de texto.', 3);
-    }
-  };
-
-  const handleTextSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (textInput.trim()) {
-      processCommand(textInput.trim());
-      setTextInput('');
-    }
-  };
+  const moralBlocked = lastMoralEval && !lastMoralEval.allowed;
+  const moralReason = lastMoralEval?.decisions.find((d) => !d.passed)?.reason;
 
   return (
-    <div className="minimal-ui">
-      <div className="module-selector" role="tablist" aria-label="Seleccion de modulo">
-        {MODULES.map((mod) => (
-          <button
-            key={mod.id}
-            role="tab"
-            aria-selected={activeModule === mod.id}
-            className={`module-btn ${activeModule === mod.id ? 'active' : ''}`}
-            onClick={() => setModule(mod.id)}
-            aria-label={`Activar modulo ${mod.label}`}
-          >
-            <span className="module-icon" aria-hidden="true">{mod.icon}</span>
-            <span className="module-label">{mod.label}</span>
-          </button>
-        ))}
+    <>
+      <TactileModuleDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
+
+      <div className="response-banner" aria-live={moralBlocked ? 'assertive' : 'polite'} role="status">
+        {moralBlocked && (
+          <div className="moral-alert" role="alert">
+            <strong>Filtro etico: accion bloqueada</strong>
+            <p>{moralReason}</p>
+          </div>
+        )}
+        {!moralBlocked && lastResponse && (
+          <div className="response-content">
+            <span className="response-source-tag">{lastResponse.source === 'gemini' ? 'Gemini' : 'Local'}</span>
+            <p>{lastResponse.text}</p>
+          </div>
+        )}
       </div>
 
-      <div className="main-action">
+      <nav className="voice-bar" role="navigation" aria-label="Control principal">
         <button
-          className={`voice-btn ${listening ? 'listening' : ''} ${!voiceEnabled ? 'muted' : ''}`}
-          onClick={handleVoiceButton}
-          aria-label={listening ? 'Detener escucha' : 'Activar comando de voz'}
-          aria-pressed={listening}
+          className="bar-drawer-trigger"
+          onClick={() => {
+            setDrawerOpen(true);
+            deviceManager.vibrate(60);
+          }}
+          aria-label="Abrir menu de modulos"
+          aria-expanded={drawerOpen}
+          aria-controls="module-navigation"
+          aria-haspopup="dialog"
         >
-          <span className="voice-btn-icon" aria-hidden="true">
-            {listening ? '\u{23F9}' : '\u{1F3A4}'}
-          </span>
-          <span className="voice-btn-label">
-            {listening ? 'Escuchando' : voiceEnabled ? 'Hablar' : 'Voz apagada'}
-          </span>
+          <span className="bar-trigger-icon" aria-hidden="true">{'\u{1F4CA}'}</span>
+          <span className="bar-trigger-label">{activeModule}</span>
         </button>
 
-        <form className="text-input-form" onSubmit={handleTextSubmit}>
-          <input
-            type="text"
-            value={textInput}
-            onChange={(e) => setTextInput(e.target.value)}
-            placeholder="Escribe un comando..."
-            aria-label="Campo de comando de texto"
-          />
-          <button type="submit" aria-label="Enviar comando">Enviar</button>
-        </form>
-      </div>
+        <VoiceOrbButton />
 
-      <div className="control-toggles">
-        <button
-          className={`toggle-btn ${voiceEnabled ? 'on' : 'off'}`}
-          onClick={toggleVoice}
-          aria-pressed={voiceEnabled}
-          aria-label="Activar o desactivar voz"
-        >
-          {voiceEnabled ? '\u{1F50A} Voz ON' : '\u{1F507} Voz OFF'}
-        </button>
-        <button
-          className={`toggle-btn ${humanVeto ? 'on veto' : 'off'}`}
-          onClick={toggleHumanVeto}
-          aria-pressed={humanVeto}
-          aria-label="Activar o desactivar veto humano"
-        >
-          {humanVeto ? '\u{1F6D1} Veto ON' : '\u{2705} Veto OFF'}
-        </button>
-        <button
-          className={`toggle-btn ${geminiRemote ? 'on' : 'off'}`}
-          onClick={toggleGeminiRemote}
-          aria-pressed={geminiRemote}
-          aria-label="Activar o desactivar Gemini remoto"
-        >
-          {geminiRemote ? '\u{1F4A1} Gemini ON' : '\u{1F4A1} Gemini OFF'}
-        </button>
-        <button
-          className={`toggle-btn ${worldEnabled ? 'on' : 'off'}`}
-          onClick={toggleWorldConnection}
-          aria-pressed={worldEnabled}
-          aria-label="Activar o desactivar conexion al mundo"
-        >
-          {worldEnabled ? '\u{1F310} Mundo ON' : '\u{1F310} Mundo OFF'}
-        </button>
-        <button
-          className={`toggle-btn ${isPassiveListening ? 'on' : 'off'}`}
-          onClick={togglePassiveListening}
-          aria-pressed={isPassiveListening}
-          aria-label="Activar o desactivar escucha pasiva"
-        >
-          {isPassiveListening ? '\u{1F3A4} Escucha ON' : '\u{1F3A4} Escucha OFF'}
-        </button>
-        <button
-          className={`toggle-btn ${bioEnabled ? 'on' : 'off'}`}
-          onClick={toggleBio}
-          aria-pressed={bioEnabled}
-          aria-label="Activar o desactivar BioSoftware"
-        >
-          {bioEnabled ? '\u{1F9EC} Bio ON' : '\u{1F9EC} Bio OFF'}
-        </button>
-      </div>
-
-      {isPassiveListening && (
-        <div className="passive-listening-indicator" role="status" aria-live="polite">
-          <span className="pulse-dot" aria-hidden="true" />
-          Escucha pasiva activa. Habla y Sentra Core respondera.
-        </div>
-      )}
-
-      {(lastResponse || lastMoralEval) && (
-        <div className="response-area" role="status" aria-live="polite">
-          {lastMoralEval && !lastMoralEval.allowed && (
-            <div className="moral-block">
-              <strong>Accion bloqueada por filtro etico</strong>
-              <p>{lastMoralEval.decisions.find((d) => !d.passed)?.reason}</p>
-            </div>
+        <div className="bar-status" aria-live="polite">
+          {humanVeto && <span className="status-chip status-chip--veto" title="Veto humano activo">Veto</span>}
+          {bioEnabled && (
+            <span className="status-chip status-chip--bio" title="BioSoftware activo">
+              Bio {bioActiveProtocol ? Math.round(bioSoftware.getState().cardiacCoherence * 100) + '%' : 'ON'}
+            </span>
           )}
-          {lastResponse && lastMoralEval?.allowed && (
-            <div className="response-text">
-              <span className="response-source">
-                {lastResponse.source === 'gemini' ? 'Gemini' : 'Local'}
-              </span>
-              <p>{lastResponse.text}</p>
-            </div>
-          )}
+          <span className="status-chip status-chip--evolis" title="Registros EVOLIS">{evidenceCount}</span>
         </div>
-      )}
-
-      <div className="evidence-counter" aria-label="Contador de evidencia">
-        <span aria-hidden="true">{'\u{1F4CB}'}</span> {evidenceCount} registros EVOLIS
-      </div>
-    </div>
+      </nav>
+    </>
   );
 }
