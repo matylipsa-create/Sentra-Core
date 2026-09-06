@@ -9,6 +9,8 @@ import {
   uuidv4,
 } from '../lib/crypto';
 
+export type ChainIntegrityListener = (valid: boolean) => void;
+
 export interface EVOLISEvidence {
   id: string;
   entry: HashChainEntry;
@@ -31,6 +33,7 @@ export class EVOLIS {
   private entries: EVOLISEvidence[] = [];
   private publicKey: string = '';
   private privateKey: string = '';
+  private integrityListeners: Set<ChainIntegrityListener> = new Set();
 
   async initialize(): Promise<void> {
     if (this.publicKey) return;
@@ -58,17 +61,34 @@ export class EVOLIS {
     return evidence;
   }
 
+  onIntegrityViolation(listener: ChainIntegrityListener): () => void {
+    this.integrityListeners.add(listener);
+    return () => this.integrityListeners.delete(listener);
+  }
+
   async verify(): Promise<boolean> {
     if (this.entries.length === 0) return true;
     const chain = this.entries.map((e) => e.entry);
     const chainValid = await verifyHashChain(chain);
-    if (!chainValid) return false;
+    if (!chainValid) {
+      this.notifyIntegrityListeners(false);
+      return false;
+    }
     for (const evidence of this.entries) {
       const message = `${evidence.entry.index}:${evidence.entry.hash}:${evidence.entry.previousHash}`;
       const sigValid = await dilithiumVerify(message, evidence.signature, this.publicKey);
-      if (!sigValid) return false;
+      if (!sigValid) {
+        this.notifyIntegrityListeners(false);
+        return false;
+      }
     }
     return true;
+  }
+
+  private notifyIntegrityListeners(valid: boolean): void {
+    if (!valid) {
+      for (const listener of this.integrityListeners) listener(false);
+    }
   }
 
   getEntries(): EVOLISEvidence[] {

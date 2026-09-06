@@ -10,6 +10,7 @@ const MODULES: { id: ModuleName; label: string; icon: string }[] = [
   { id: 'aprendizaje', label: 'Aprendizaje', icon: '\u{1F4DA}' },
   { id: 'bio', label: 'Bio', icon: '\u{1F9EC}' },
   { id: 'evidencia', label: 'Evidencia', icon: '\u{1F4CB}' },
+  { id: 'guardian', label: 'Guardian', icon: '\u{1F9EA}' },
   { id: 'silencio', label: 'Silencio', icon: '\u{1F507}' },
 ];
 

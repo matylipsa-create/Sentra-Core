@@ -14,7 +14,7 @@ import { bioSoftware, BioProtocol, BioSession } from '../core/BioSoftwareInterfa
 
 export type ModuleName =
   | 'vision' | 'seguridad' | 'movimiento' | 'juego'
-  | 'aprendizaje' | 'impacto' | 'silencio' | 'evidencia' | 'bio';
+  | 'aprendizaje' | 'impacto' | 'silencio' | 'evidencia' | 'bio' | 'guardian';
 
 export interface AppState {
   activeModule: ModuleName;

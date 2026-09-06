@@ -53,3 +53,35 @@ interface BluetoothDevice extends EventTarget {
   gatt?: BluetoothRemoteGATTServer;
   addEventListener(type: 'gattserverdisconnected', listener: () => void): void;
 }
+
+interface USBDevice {
+  vendorId: number;
+  productId: number;
+  manufacturerName?: string | null;
+  productName?: string | null;
+  serialNumber?: string | null;
+  connected?: boolean;
+  open(): Promise<void>;
+  close(): Promise<void>;
+  configuration?: unknown;
+  selectConfiguration(value: number): Promise<void>;
+  claimInterface(interfaceNumber: number): Promise<void>;
+  releaseInterface(interfaceNumber: number): Promise<void>;
+  transferIn(endpointNumber: number, length: number): Promise<{ data: DataView; status: string }>;
+  transferOut(endpointNumber: number, data: BufferSource): Promise<{ bytesWritten: number; status: string }>;
+}
+
+interface USBConnectionEvent extends Event {
+  device: USBDevice;
+}
+
+interface USB {
+  getDevices(): Promise<USBDevice[]>;
+  requestDevice(opts: { filters: Record<string, unknown>[] }): Promise<USBDevice>;
+  addEventListener(type: 'connect', listener: (e: USBConnectionEvent) => void): void;
+  addEventListener(type: 'disconnect', listener: (e: USBConnectionEvent) => void): void;
+}
+
+interface Navigator {
+  usb?: USB;
+}

@@ -20,6 +20,7 @@ export const MODULE_DEFS: ModuleDef[] = [
   { id: 'silencio', label: 'Silencio', description: 'Vibracion + LEDs (sin voz)', icon: '\u{1F507}', requiresCamera: false, requiresGPS: false, requiresSensors: true },
   { id: 'evidencia', label: 'Evidencia', description: 'EVOLIS + hash chain + exportacion', icon: '\u{1F4CB}', requiresCamera: false, requiresGPS: false, requiresSensors: false },
   { id: 'bio', label: 'Bio', description: 'Inferencia activa, placebos cognitivos, neuroplasticidad, coherencia cardiaca', icon: '\u{1F9EC}', requiresCamera: false, requiresGPS: false, requiresSensors: false },
+  { id: 'guardian', label: 'Guardian', description: 'Guardian bacteriano: defensa USB + cadena EVOLIS + logica ternaria', icon: '\u{1F6E1}', requiresCamera: false, requiresGPS: false, requiresSensors: false },
 ];
 
 export class ModuleManager {

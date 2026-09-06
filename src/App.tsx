@@ -17,6 +17,8 @@ import { PowerMode } from './core/PowerManager';
 import { voiceManager } from './services/VoiceManager';
 import { bioSoftware, BioProtocol } from './core/BioSoftwareInterface';
 import { usePowerMode as usePowerModeHook } from './hooks/usePowerMode';
+import { GuardianView } from './components/GuardianView';
+import { bacterialGuardian } from './core/BacterialGuardian';
 
 function AccessibleMinimalHeader() {
   const { activeModule, evidenceCount, humanVeto, geminiRemote, worldEnabled, bioEnabled, bioActiveProtocol } = useApp();
@@ -664,6 +666,7 @@ function MainContent() {
   if (activeModule === 'impacto') return <ImpactView />;
   if (activeModule === 'seguridad') return <SecurityView />;
   if (activeModule === 'bio') return <BioView />;
+  if (activeModule === 'guardian') return <GuardianView />;
   return null;
 }
 
@@ -809,6 +812,10 @@ function ToastContainer() {
 
 function AppInner() {
   useHardwareAutoAdjust();
+  useEffect(() => {
+    bacterialGuardian.activate();
+    return () => bacterialGuardian.deactivate();
+  }, []);
   return (
     <AdaptiveUI>
       <AccessibleMinimalHeader />
