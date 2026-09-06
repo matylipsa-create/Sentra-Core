@@ -1,3 +1,5 @@
+import { perceptionEngine } from './PerceptionEngine';
+
 export type BioProtocol =
   | 'active_inference'
   | 'cognitive_placebo'
@@ -225,11 +227,21 @@ export class BioSoftwareInterface {
         session.metrics.coherenceScore = this.state.cardiacCoherence;
         this.state.stressLevel = Math.max(0, 0.5 - cycles * 0.02);
         this.state.focusLevel = Math.min(1, 0.5 + cycles * 0.025);
+        this.applyPerceptionAdjustment();
       }
     }
     if (elapsedMs >= session.duration * 1000) {
       this.stopSession();
     }
+  }
+
+  applyPerceptionAdjustment(): void {
+    perceptionEngine.setBioContext(this.state);
+  }
+
+  getPerceptionSensitivity(): { confidenceThreshold: number; contextLabel: string } {
+    const s = perceptionEngine.getSensitivity();
+    return { confidenceThreshold: s.confidenceThreshold, contextLabel: s.contextLabel };
   }
 
   getReframe(): string | null {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { moralNode } from '../core/MoralNode';
 import { evolis } from '../core/EVOLIS';
 import { PerceptionEngine, PerceptionData } from '../core/PerceptionEngine';
+import { bioSoftware } from '../core/BioSoftwareInterface';
 
 export interface Detection {
   class: string;
@@ -81,7 +82,12 @@ export function useRealModeSensors(
         const detections: Detection[] = predictions.map((p) => ({
           class: p.class, score: p.score, bbox: p.bbox as [number, number, number, number],
         }));
-        const perception = perceptionEngine.current.process({ visionDetections: detections });
+        perceptionEngine.current.setBioContext(bioSoftware.getState());
+        const perception = perceptionEngine.current.process({
+          visionDetections: detections,
+          imageWidth: video.videoWidth || 300,
+          imageHeight: video.videoHeight || 300,
+        });
         const eval_ = moralNode.evaluate(`detect: ${detections.map((d) => d.class).join(', ')}`);
         if (eval_.allowed && detections.length > 0) {
           await evolis.record('vision', 'detection', JSON.stringify(detections.slice(0, 3)));

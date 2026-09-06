@@ -9,6 +9,27 @@ export type PassiveListenCallback = (transcript: string) => void;
 
 const VOICE_STORAGE_KEY = 'sentra_voice_uri';
 
+const COMMON_MISSPELLINGS: Record<string, string> = {
+  'como': 'cómo', 'que': 'qué', 'estas': 'estás', 'donde': 'dónde',
+  'cuando': 'cuándo', 'quien': 'quién', 'cual': 'cuál', 'cuanto': 'cuánto',
+  'por que': 'por qué', 'para que': 'para qué', 'cual es': 'cuál es',
+  'que es': 'qué es', 'que hay': 'qué hay', 'que ves': 'qué ves',
+  'quien eres': 'quién eres', 'que eres': 'qué eres',
+  'como estas': 'cómo estás', 'como te llamas': 'cómo te llamas',
+  'donde estoy': 'dónde estoy', 'que detectas': 'qué detectas',
+  'que puedo': 'qué puedo', 'que quieres': 'qué quieres',
+  'cual es tu nombre': 'cuál es tu nombre',
+};
+
+function normalizeAccents(text: string): string {
+  let result = text;
+  for (const [wrong, correct] of Object.entries(COMMON_MISSPELLINGS)) {
+    const regex = new RegExp(`\\b${wrong}\\b`, 'gi');
+    result = result.replace(regex, correct);
+  }
+  return result;
+}
+
 export class VoiceManager {
   private synth: SpeechSynthesis | null = null;
   private queue: VoiceCue[] = [];
@@ -73,13 +94,14 @@ export class VoiceManager {
 
   speak(text: string, priority = 5): void {
     if (!this.enabled || !this.synth) return;
+    const normalized = normalizeAccents(text);
     const now = Date.now();
-    const last = this.lastSpoken.get(text);
+    const last = this.lastSpoken.get(normalized);
     if (last && now - last < this.dedupeWindowMs) return;
-    this.lastSpoken.set(text, now);
+    this.lastSpoken.set(normalized, now);
     const cue: VoiceCue = {
       id: crypto.randomUUID?.() ?? Math.random().toString(36).slice(2),
-      text, priority, timestamp: now,
+      text: normalized, priority, timestamp: now,
     };
     this.queue.push(cue);
     this.queue.sort((a, b) => a.priority - b.priority);
@@ -129,7 +151,8 @@ export class VoiceManager {
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const last = event.results[event.results.length - 1];
       if (last.isFinal) {
-        const transcript = last[0].transcript.trim();
+        const raw = last[0].transcript.trim();
+        const transcript = normalizeAccents(raw);
         if (transcript && this.passiveCallback) {
           this.passiveCallback(transcript);
         }
