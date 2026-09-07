@@ -13,6 +13,7 @@ import 'bio_screen.dart';
 import 'evidence_screen.dart';
 import 'guardian_screen.dart';
 import 'learning_screen.dart';
+import 'security_screen.dart';
 import 'vision_screen.dart';
 import 'silence_screen.dart';
 
@@ -121,6 +122,8 @@ class _MainScreenState extends State<MainScreen> {
         return EvidenceScreen(notifier: widget.notifier, client: widget.client);
       case 'guardian':
         return GuardianScreen(notifier: widget.notifier, client: widget.client);
+      case 'seguridad':
+        return SecurityScreen(notifier: widget.notifier, client: widget.client);
       case 'aprendizaje':
         return LearningScreen(notifier: widget.notifier);
       case 'vision':

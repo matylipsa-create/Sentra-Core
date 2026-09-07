@@ -207,6 +207,80 @@ const handlers: Record<string, Handler> = {
     await storageService.downloadExport();
     return { exported: true };
   },
+
+  'query:get_usb_devices': async () => ({
+    devices: usbService.getDevices().map((d) => {
+      const key = `${d.vendorId}:${d.productId}:${d.serialNumber ?? 'unknown'}`;
+      return { ...d, portId: key, portStatus: usbService.getPortStatus(key) };
+    }),
+  }),
+
+  'command:block_port': async (msg) => {
+    const portId = msg.payload.portId as string;
+    usbService.blockPort(portId, msg.payload.reason as string | undefined);
+    await evolis.registerUSBEvent(`block:${portId}`);
+    broadcast(makeEvent('usb.port_change', { portId, status: usbService.getPortStatus(portId) }));
+    return { portId, status: usbService.getPortStatus(portId) };
+  },
+
+  'command:unblock_port': async (msg) => {
+    const portId = msg.payload.portId as string;
+    usbService.unblockPort(portId);
+    bacterialGuardian.vaccinatePort(portId);
+    await evolis.registerUSBEvent(`unblock:${portId}`);
+    broadcast(makeEvent('usb.port_change', { portId, status: usbService.getPortStatus(portId) }));
+    return { portId, status: usbService.getPortStatus(portId) };
+  },
+
+  'command:authenticate_device': async (msg) => {
+    const portId = msg.payload.portId as string;
+    const ok = usbService.authenticateDevice(portId);
+    if (!ok) {
+      bacterialGuardian.activateDefense(portId);
+      await evolis.registerUSBEvent(`defense:${portId}`);
+      broadcast(makeEvent('usb.port_change', { portId, status: usbService.getPortStatus(portId) }));
+      return { portId, authenticated: false, status: usbService.getPortStatus(portId) };
+    }
+    await evolis.registerUSBEvent(`auth:${portId}`);
+    broadcast(makeEvent('usb.port_change', { portId, status: usbService.getPortStatus(portId) }));
+    return { portId, authenticated: true, status: usbService.getPortStatus(portId) };
+  },
+
+  'command:deploy_bacteria': async (msg) => {
+    const portId = msg.payload.portId as string;
+    bacterialGuardian.deployBacteria(portId);
+    await evolis.registerUSBEvent(`bacteria:${portId}`);
+    broadcast(makeEvent('usb.port_change', { portId, status: usbService.getPortStatus(portId) }));
+    return { portId, status: usbService.getPortStatus(portId) };
+  },
+
+  'command:vaccinate_port': async (msg) => {
+    const portId = msg.payload.portId as string;
+    bacterialGuardian.vaccinatePort(portId);
+    await evolis.registerUSBEvent(`vaccinate:${portId}`);
+    broadcast(makeEvent('usb.port_change', { portId, status: usbService.getPortStatus(portId) }));
+    return { portId, status: usbService.getPortStatus(portId) };
+  },
+
+  'query:get_sync_status': async () => syncManager.getStatus(),
+
+  'command:set_sync_transport': async (msg) => {
+    const transport = msg.payload.transport as SyncTransport;
+    syncManager.setTransport(transport);
+    state.syncTransport = transport;
+    broadcast(makeEvent('sync.transport_changed', { transport }));
+    return { transport };
+  },
+
+  'command:connect_bluetooth': async () => {
+    await syncManager.connectBluetooth();
+    return syncManager.getStatus();
+  },
+
+  'command:disconnect_bluetooth': async () => {
+    syncManager.disconnectBluetooth();
+    return syncManager.getStatus();
+  },
 };
 
 // ─── WebSocket server ───────────────────────────────────
@@ -334,6 +408,71 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
     }
     if (route === 'guardian/status' && req.method === 'GET') {
       sendJson(200, bacterialGuardian.getStatus());
+      return;
+    }
+    if (route === 'usb/devices' && req.method === 'GET') {
+      sendJson(200, {
+        devices: usbService.getDevices().map((d) => {
+          const key = `${d.vendorId}:${d.productId}:${d.serialNumber ?? 'unknown'}`;
+          return { ...d, portId: key, portStatus: usbService.getPortStatus(key) };
+        }),
+      });
+      return;
+    }
+    if (route === 'usb/block' && req.method === 'POST') {
+      const raw: string = await readBody(req);
+      body = JSON.parse(raw);
+      const portId = body.portId as string;
+      usbService.blockPort(portId, body.reason as string | undefined);
+      await evolis.registerUSBEvent(`block:${portId}`);
+      broadcast(makeEvent('usb.port_change', { portId, status: usbService.getPortStatus(portId) }));
+      sendJson(200, { portId, status: usbService.getPortStatus(portId) });
+      return;
+    }
+    if (route === 'usb/unblock' && req.method === 'POST') {
+      const raw: string = await readBody(req);
+      body = JSON.parse(raw);
+      const portId = body.portId as string;
+      usbService.unblockPort(portId);
+      bacterialGuardian.vaccinatePort(portId);
+      await evolis.registerUSBEvent(`unblock:${portId}`);
+      broadcast(makeEvent('usb.port_change', { portId, status: usbService.getPortStatus(portId) }));
+      sendJson(200, { portId, status: usbService.getPortStatus(portId) });
+      return;
+    }
+    if (route === 'usb/authenticate' && req.method === 'POST') {
+      const raw: string = await readBody(req);
+      body = JSON.parse(raw);
+      const portId = body.portId as string;
+      const ok = usbService.authenticateDevice(portId);
+      if (!ok) bacterialGuardian.activateDefense(portId);
+      await evolis.registerUSBEvent(ok ? `auth:${portId}` : `defense:${portId}`);
+      broadcast(makeEvent('usb.port_change', { portId, status: usbService.getPortStatus(portId) }));
+      sendJson(200, { portId, authenticated: ok, status: usbService.getPortStatus(portId) });
+      return;
+    }
+    if (route === 'sync/status' && req.method === 'GET') {
+      sendJson(200, syncManager.getStatus());
+      return;
+    }
+    if (route === 'sync/transport' && req.method === 'POST') {
+      const raw: string = await readBody(req);
+      body = JSON.parse(raw);
+      const transport = body.transport as SyncTransport;
+      syncManager.setTransport(transport);
+      state.syncTransport = transport;
+      broadcast(makeEvent('sync.transport_changed', { transport }));
+      sendJson(200, { transport });
+      return;
+    }
+    if (route === 'sync/connect-bluetooth' && req.method === 'POST') {
+      await syncManager.connectBluetooth();
+      sendJson(200, syncManager.getStatus());
+      return;
+    }
+    if (route === 'sync/disconnect-bluetooth' && req.method === 'POST') {
+      syncManager.disconnectBluetooth();
+      sendJson(200, syncManager.getStatus());
       return;
     }
     if (route === 'command' && req.method === 'POST') {

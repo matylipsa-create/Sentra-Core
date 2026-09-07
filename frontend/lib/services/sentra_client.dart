@@ -117,6 +117,11 @@ class SentraClient {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  // ─── Public REST helpers for screens ──────────────
+
+  Future<Map<String, dynamic>> getRoute(String route) => _get(route);
+  Future<Map<String, dynamic>> postRoute(String route, Map<String, dynamic> body) => _post(route, body);
+
   void _onData(dynamic data) {
     try {
       final json = jsonDecode(data as String) as Map<String, dynamic>;

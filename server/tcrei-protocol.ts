@@ -10,7 +10,11 @@ export type TCREIAction =
   | 'resolve_alert' | 'clear_alerts' | 'dismiss_quarantine'
   | 'set_module' | 'set_setting' | 'get_status' | 'get_evidence'
   | 'get_protocols' | 'get_bio_state' | 'get_bio_stats'
-  | 'get_guardian_status' | 'check_chain';
+  | 'get_guardian_status' | 'check_chain'
+  | 'get_usb_devices' | 'block_port' | 'unblock_port'
+  | 'authenticate_device' | 'deploy_bacteria' | 'vaccinate_port'
+  | 'get_sync_status' | 'set_sync_transport'
+  | 'connect_bluetooth' | 'disconnect_bluetooth';
 
 export interface TCREIMessage {
   type: TCREIMessageType;

@@ -73,6 +73,14 @@ El servidor (`server/`) expone:
 | GET | `/api/bio/state` | Estado actual de BioSoftware |
 | GET | `/api/bio/stats` | Estadisticas de sesiones bio |
 | GET | `/api/guardian/status` | Estado del Guardian Bacteriano |
+| GET | `/api/usb/devices` | Lista de dispositivos USB y estado de puerto |
+| POST | `/api/usb/block` | Bloquear puerto USB |
+| POST | `/api/usb/unblock` | Desbloquear y vacunar puerto USB |
+| POST | `/api/usb/authenticate` | Autenticar dispositivo USB |
+| GET | `/api/sync/status` | Estado de sincronizacion P2P |
+| POST | `/api/sync/transport` | Cambiar transporte de sincronizacion |
+| POST | `/api/sync/connect-bluetooth` | Conectar Bluetooth |
+| POST | `/api/sync/disconnect-bluetooth` | Desconectar Bluetooth |
 | POST | `/api/command` | Procesar comando (texto) |
 | POST | `/api/settings` | Actualizar configuracion |
 
@@ -187,6 +195,8 @@ frontend/
 | `bio.session_complete` | Sesion bio completada |
 | `guardian.alert` | Nueva alerta del guardian |
 | `guardian.state_change` | Cambio de estado del guardian (dormant → active → alert → quarantine) |
+| `usb.port_change` | Cambio de estado de un puerto USB (blocked, allowed, infected) |
+| `sync.transport_changed` | Cambio de transporte de sincronizacion P2P |
 | `evidence.recorded` | Nueva entrada en la cadena EVOLIS |
 | `moral.blocked` | Comando bloqueado por el filtro etico |
 | `voice.response` | Respuesta de voz lista para sintetizar |
