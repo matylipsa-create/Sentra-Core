@@ -136,6 +136,49 @@ export class EVOLIS {
     this.publicKey = '';
     this.privateKey = '';
   }
+
+  async registerIdentityEvent(eventType: string, data: string): Promise<EVOLISEvidence> {
+    return this.record('identity', eventType, data);
+  }
+
+  getIdentityHistory(): EVOLISEvidence[] {
+    return this.entries.filter((e) => e.module === 'identity');
+  }
+
+  async verifyIdentityChain(): Promise<boolean> {
+    const identityEntries = this.getIdentityHistory();
+    if (identityEntries.length === 0) return true;
+    const chain = identityEntries.map((e) => e.entry);
+    const chainValid = await verifyHashChain(chain);
+    if (!chainValid) return false;
+    for (const evidence of identityEntries) {
+      const message = `${evidence.entry.index}:${evidence.entry.hash}:${evidence.entry.previousHash}`;
+      const sigValid = await dilithiumVerify(message, evidence.signature, this.publicKey);
+      if (!sigValid) return false;
+    }
+    return true;
+  }
+
+  exportIdentity(): string {
+    const identityEntries = this.getIdentityHistory();
+    return JSON.stringify(identityEntries, null, 2);
+  }
+
+  importIdentity(data: string): boolean {
+    try {
+      const parsed = JSON.parse(data) as EVOLISEvidence[];
+      if (!Array.isArray(parsed)) return false;
+      const existingIds = new Set(this.entries.map((e) => e.id));
+      for (const entry of parsed) {
+        if (entry.module === 'identity' && !existingIds.has(entry.id)) {
+          this.entries.push(entry);
+        }
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
 
 export const evolis = new EVOLIS();

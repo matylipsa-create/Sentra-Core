@@ -13,10 +13,14 @@ import { PowerMode } from '../core/PowerManager';
 import { bioSoftware, BioProtocol, BioSession } from '../core/BioSoftwareInterface';
 import { bacterialGuardian, GuardianStatus } from '../core/BacterialGuardian';
 import { usbService, USBDeviceInfo, PortStatus } from '../services/USBService';
+import { contextGovernor } from '../core/ContextGovernor';
+import { selfPerceptionLoop } from '../core/SelfPerceptionLoop';
+import { identityManager } from '../core/IdentityManager';
 
 export type ModuleName =
   | 'vision' | 'seguridad' | 'movimiento' | 'juego'
-  | 'aprendizaje' | 'impacto' | 'silencio' | 'evidencia' | 'bio' | 'guardian';
+  | 'aprendizaje' | 'impacto' | 'silencio' | 'evidencia' | 'bio' | 'guardian'
+  | 'identidad' | 'autopercepcion';
 
 export interface AppState {
   activeModule: ModuleName;
@@ -108,6 +112,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (entries.length > 0) {
           evolis.importState(entries);
           setState((s) => ({ ...s, evidenceCount: entries.length }));
+        }
+      });
+      identityManager.init().then(() => {
+        if (!identityManager.verifyIdentityConsistency()) {
+          identityManager.createIdentity(
+            'Sentra Core',
+            'Motor de IA soberano, offline-first, con veto humano y trazabilidad inalterable.',
+            'directo', 'directo',
+            ['soberania', 'offline-first', 'veto-humano', 'trazabilidad', 'accesibilidad']
+          );
+          identityManager.persistInitialIdentity();
         }
       });
     });
@@ -209,20 +224,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const processCommand = useCallback(async (command: string, perception?: PerceptionData) => {
-    const eval_ = moralNode.evaluate(command, { externalRequest: state.worldEnabled });
+    selfPerceptionLoop.recordAction('command');
+
+    const lower = command.toLowerCase();
+    if (lower.includes('como estas') || lower.includes('como te sientes') || lower.includes('estado del sistema')) {
+      const report = selfPerceptionLoop.getSelfReport();
+      const response = { text: report, confidence: 0.8, source: 'local' as const };
+      await evolis.record('autopercepcion', 'self_report', command);
+      const evidence = evolis.getEntries();
+      await storageService.saveEvidence(evidence[evidence.length - 1]);
+      setState((s) => ({ ...s, lastResponse: response, evidenceCount: evidence.length }));
+      if (state.voiceEnabled) voiceManager.speak(response.text, 5);
+      return;
+    }
+
+    const govDecision = contextGovernor.governContext(command, state.activeModule);
+    if (govDecision.type === 'block') {
+      voiceManager.speak(`Entrada bloqueada: ${govDecision.reason}`, 1);
+      return;
+    }
+    const governedCommand = govDecision.processedInput || command;
+
+    const eval_ = moralNode.evaluate(governedCommand, { externalRequest: state.worldEnabled });
     setState((s) => ({ ...s, lastMoralEval: eval_ }));
     if (!eval_.allowed) {
       const reason = eval_.decisions.find((d) => !d.passed)?.reason ?? 'Accion bloqueada';
+      selfPerceptionLoop.recordAction('moral_block');
       voiceManager.speak(`Accion bloqueada: ${reason}`, 1);
       return;
     }
     const perceptionData = perception ?? state.lastPerception;
     const perceptionSummary = perceptionData
       ? perceptionEngine.summarize(perceptionData) : 'Sin percepcion activa';
-    const response = await geminiService.query(state.activeModule, perceptionSummary, command);
-    await evolis.record(state.activeModule, 'command', command);
+    const response = await geminiService.query(state.activeModule, perceptionSummary, governedCommand);
+    await evolis.record(state.activeModule, 'command', governedCommand);
     const evidence = evolis.getEntries();
     await storageService.saveEvidence(evidence[evidence.length - 1]);
+    selfPerceptionLoop.recordAction('evidence');
     setState((s) => ({
       ...s, lastResponse: response, evidenceCount: evidence.length,
     }));
