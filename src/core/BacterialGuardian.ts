@@ -88,6 +88,10 @@ export class BacterialGuardian {
     for (const dev of devices) {
       const key = `${dev.vendorId}:${dev.productId}:${dev.serialNumber ?? 'unknown'}`;
       if (!dev.connected) continue;
+      if (usbService.isPortInfected(key)) {
+        this.addAlert('usb_blocked', 'critical', `Puerto infectado: VID ${dev.vendorId} PID ${dev.productId}`, key);
+        continue;
+      }
       if (usbService.isBlocked(key)) {
         this.addAlert('usb_blocked', 'high', `Dispositivo USB bloqueado persiste: VID ${dev.vendorId}`, key);
         continue;
@@ -98,6 +102,41 @@ export class BacterialGuardian {
     }
     this.updateState();
     this.notify();
+  }
+
+  monitorUSB(portId: string, deviceSignature: string): boolean {
+    const suspicious = deviceSignature === 'unknown' || deviceSignature === '';
+    if (suspicious) {
+      this.activateDefense(portId);
+      return false;
+    }
+    return true;
+  }
+
+  activateDefense(portId: string): void {
+    usbService.blockPort(portId, 'Defensa activada: firma sospechosa');
+    this.addAlert('auth_failed', 'high', `Defensa activada en puerto ${portId}`, portId);
+    this.deployBacteria(portId);
+    this.updateState();
+    this.notify();
+  }
+
+  deployBacteria(portId: string): void {
+    usbService.markInfected(portId);
+    this.addAlert('usb_blocked', 'critical', `Bacteria desplegada en puerto ${portId}`, portId);
+    this.updateState();
+    this.notify();
+  }
+
+  vaccinatePort(portId: string): void {
+    usbService.vaccinatePort(portId);
+    this.alerts = this.alerts.filter((a) => a.deviceKey !== portId);
+    this.updateState();
+    this.notify();
+  }
+
+  isPortInfected(portId: string): boolean {
+    return usbService.isPortInfected(portId);
   }
 
   async checkChain(): Promise<boolean> {

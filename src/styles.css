@@ -799,3 +799,19 @@ body {
 .guardian-mon-off { color: var(--text-dim); }
 .guardian-mon-time { color: var(--text-dim); font-size: 0.75rem; }
 
+.guardian-usb--blocked { border-color: var(--error); border-left: 3px solid var(--error); }
+.guardian-usb--infected { border-color: var(--error); border-left: 3px solid var(--error); background: rgba(255, 68, 68, 0.12); }
+.guardian-usb--allowed { border-color: var(--accent); border-left: 3px solid var(--accent); }
+
+.guardian-veto-confirm {
+  display: flex; flex-direction: column; gap: var(--space-1);
+  padding: var(--space-1) var(--space-2); margin-top: var(--space-1);
+  background: var(--bg-elevated); border-radius: var(--radius-sm);
+  border: 1px solid var(--warning);
+}
+.guardian-veto-text { font-size: 0.82rem; color: var(--warning); }
+.guardian-veto-label { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; cursor: pointer; }
+.guardian-veto-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--warning); }
+.guardian-veto-buttons { display: flex; gap: var(--space-1); }
+.guardian-veto-buttons .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+

@@ -66,6 +66,18 @@ export class EVOLIS {
     return () => this.integrityListeners.delete(listener);
   }
 
+  async registerUSBEvent(event: string): Promise<EVOLISEvidence> {
+    return this.record('guardian', 'usb_event', event);
+  }
+
+  async verifyChainIntegrity(): Promise<boolean> {
+    return this.verify();
+  }
+
+  onChainBreach(): void {
+    this.notifyIntegrityListeners(false);
+  }
+
   async verify(): Promise<boolean> {
     if (this.entries.length === 0) return true;
     const chain = this.entries.map((e) => e.entry);

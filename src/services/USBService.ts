@@ -17,6 +17,8 @@ export interface USBAuthChallenge {
   resolved: Trit;
 }
 
+export type PortStatus = 'blocked' | 'allowed' | 'infected';
+
 type Trit = 1 | 0 | -1;
 
 const KNOWN_VENDORS: number[] = [];
@@ -29,6 +31,7 @@ const AUTH_GRACE_MS = 5000;
 export class USBService {
   private devices: Map<string, USBDeviceInfo> = new Map();
   private blockedDevices: Set<string> = new Set();
+  private infectedDevices: Set<string> = new Set();
   private listeners: Set<(devices: USBDeviceInfo[]) => void> = new Set();
   private authChallenges: Map<string, USBAuthChallenge> = new Map();
   private monitoring = false;
@@ -146,12 +149,54 @@ export class USBService {
 
   unblockDevice(key: string): void {
     this.blockedDevices.delete(key);
+    this.infectedDevices.delete(key);
     const info = this.devices.get(key);
     if (info) {
       info.authenticated = false;
       this.devices.set(key, info);
     }
     this.notify();
+  }
+
+  blockPort(portId: string, reason?: string): void {
+    this.blockDevice(portId, reason);
+  }
+
+  unblockPort(portId: string): void {
+    this.unblockDevice(portId);
+  }
+
+  markInfected(portId: string): void {
+    this.infectedDevices.add(portId);
+    this.blockedDevices.add(portId);
+    const info = this.devices.get(portId);
+    if (info) {
+      info.authenticated = false;
+      info.connected = false;
+      this.devices.set(portId, info);
+    }
+    this.notify();
+  }
+
+  vaccinatePort(portId: string): void {
+    this.infectedDevices.delete(portId);
+    this.blockedDevices.delete(portId);
+    const info = this.devices.get(portId);
+    if (info) {
+      info.authenticated = true;
+      this.devices.set(portId, info);
+    }
+    this.notify();
+  }
+
+  isPortInfected(portId: string): boolean {
+    return this.infectedDevices.has(portId);
+  }
+
+  getPortStatus(portId: string): PortStatus {
+    if (this.infectedDevices.has(portId)) return 'infected';
+    if (this.blockedDevices.has(portId)) return 'blocked';
+    return 'allowed';
   }
 
   isBlocked(key: string): boolean {

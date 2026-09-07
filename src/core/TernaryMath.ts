@@ -136,5 +136,41 @@ export class TernaryEthics {
   }
 }
 
+export function evaluateConfidence(score: number): Trit {
+  if (score > 0.5) return TRIT_POS;
+  if (score < -0.5) return TRIT_NEG;
+  return TRIT_NEUTRAL;
+}
+
+export function evaluateEthics(action: string, context: { allowed?: boolean; humanVeto?: boolean; chainValid?: boolean; usbSafe?: boolean }): Trit {
+  const vetoed = context.humanVeto ?? false;
+  if (vetoed) return TRIT_NEG;
+  const allowed = context.allowed ?? true;
+  if (!allowed) return TRIT_NEG;
+  const chainValid = context.chainValid ?? true;
+  if (!chainValid) return TRIT_NEG;
+  const usbSafe = context.usbSafe ?? true;
+  if (!usbSafe) return TRIT_NEG;
+  const lower = action.toLowerCase();
+  if (lower === 'delete' || lower === 'destroy' || lower === 'corrupt') return TRIT_NEG;
+  if (lower === 'read' || lower === 'view' || lower === 'verify') return TRIT_POS;
+  return TRIT_NEUTRAL;
+}
+
+export function combine(states: Trit[]): Trit {
+  if (states.length === 0) return TRIT_NEUTRAL;
+  if (states.some((s) => s === TRIT_NEG)) return TRIT_NEG;
+  if (states.every((s) => s === TRIT_POS)) return TRIT_POS;
+  return TRIT_NEUTRAL;
+}
+
+export function isAllowed(state: Trit): boolean {
+  return state === TRIT_POS;
+}
+
+export function isBlocked(state: Trit): boolean {
+  return state === TRIT_NEG;
+}
+
 export const ternaryTrust = new TernaryTrust();
 export const ternaryEthics = new TernaryEthics();

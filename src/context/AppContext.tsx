@@ -11,6 +11,8 @@ import { voiceManager } from '../services/VoiceManager';
 import { storageService } from '../services/StorageService';
 import { PowerMode } from '../core/PowerManager';
 import { bioSoftware, BioProtocol, BioSession } from '../core/BioSoftwareInterface';
+import { bacterialGuardian, GuardianStatus } from '../core/BacterialGuardian';
+import { usbService, USBDeviceInfo, PortStatus } from '../services/USBService';
 
 export type ModuleName =
   | 'vision' | 'seguridad' | 'movimiento' | 'juego'
@@ -34,6 +36,9 @@ export interface AppState {
   bioCurrentSession: BioSession | null;
   bioSessions: BioSession[];
   bioReframe: string | null;
+  isBacterialGuardianActive: boolean;
+  guardianStatus: GuardianStatus | null;
+  usbPorts: Map<string, PortStatus>;
 }
 
 interface AppContextValue extends AppState {
@@ -54,6 +59,8 @@ interface AppContextValue extends AppState {
   startBioSession: (protocol: BioProtocol) => void;
   stopBioSession: () => void;
   getBioReframe: () => void;
+  activateGuardian: () => void;
+  deactivateGuardian: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -91,6 +98,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       worldEnabled: savedWorld, isPassiveListening: false,
       bioEnabled: savedBio, bioActiveProtocol: null,
       bioCurrentSession: null, bioSessions: [], bioReframe: null,
+      isBacterialGuardianActive: false, guardianStatus: null, usbPorts: new Map(),
     };
   });
 
@@ -103,6 +111,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       });
     });
+  }, []);
+
+  useEffect(() => {
+    const unsub = bacterialGuardian.subscribe((status) => {
+      const ports = new Map<string, PortStatus>();
+      for (const dev of usbService.getDevices()) {
+        const key = `${dev.vendorId}:${dev.productId}:${dev.serialNumber ?? 'unknown'}`;
+        ports.set(key, usbService.getPortStatus(key));
+      }
+      setState((s) => ({
+        ...s,
+        guardianStatus: status,
+        isBacterialGuardianActive: status.state !== 'dormant',
+        usbPorts: ports,
+      }));
+    });
+    return unsub;
   }, []);
 
   const setModule = useCallback((module: ModuleName) => {
@@ -266,6 +291,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, bioReframe: reframe }));
   }, []);
 
+  const activateGuardian = useCallback(() => {
+    bacterialGuardian.activate();
+    voiceManager.speak('Guardian bacteriano activado', 2);
+  }, []);
+
+  const deactivateGuardian = useCallback(() => {
+    bacterialGuardian.deactivate();
+    voiceManager.speak('Guardian bacteriano desactivado', 2);
+  }, []);
+
   const value: AppContextValue = {
     ...state, setModule, toggleVoice, toggleHumanVeto,
     setPowerMode, setSyncTransport, processCommand, setGeminiRemote,
@@ -273,6 +308,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     togglePassiveListening,
     exportData, getEvidence,
     toggleBio, startBioSession, stopBioSession, getBioReframe,
+    activateGuardian, deactivateGuardian,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

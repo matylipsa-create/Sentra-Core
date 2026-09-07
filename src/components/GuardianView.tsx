@@ -4,6 +4,7 @@ import { useToast } from '../context/ToastContext';
 import { usbService } from '../services/USBService';
 import { bacterialGuardian, GuardianState } from '../core/BacterialGuardian';
 import { tritToValue, Trit } from '../core/TernaryMath';
+import { USBStoragePanel } from './USBStoragePanel';
 
 const STATE_LABELS: Record<GuardianState, string> = {
   dormant: 'Dormido',
@@ -178,72 +179,7 @@ export function GuardianView() {
         </div>
       )}
 
-      <div className="guardian-usb-section">
-        <h3>Dispositivos USB</h3>
-        {!usbSupported && (
-          <p className="empty-state">WebUSB no soportado en este dispositivo.</p>
-        )}
-        {usbSupported && devices.length === 0 && (
-          <p className="empty-state">No hay dispositivos USB conectados.</p>
-        )}
-        {devices.length > 0 && (
-          <div className="guardian-usb-list">
-            {devices.map((dev, i) => {
-              const key = `${dev.vendorId}:${dev.productId}:${dev.serialNumber ?? 'unknown'}`;
-              const blocked = usbService.isBlocked(key);
-              return (
-                <div key={i} className={`guardian-usb-device ${blocked ? 'guardian-usb-blocked' : ''} ${dev.authenticated ? 'guardian-usb-auth' : ''}`}>
-                  <div className="guardian-usb-info">
-                    <strong>VID {dev.vendorId.toString(16)} / PID {dev.productId.toString(16)}</strong>
-                    <span className="guardian-usb-name">{dev.productName ?? 'Sin nombre'}</span>
-                    <span className="guardian-usb-status">
-                      {blocked ? 'Bloqueado' : dev.authenticated ? 'Autenticado' : dev.connected ? 'No autenticado' : 'Desconectado'}
-                    </span>
-                  </div>
-                  <div className="guardian-usb-actions">
-                    {!blocked && !dev.authenticated && dev.connected && (
-                      <button className="action-btn" onClick={() => {
-                        const ok = usbService.authenticateDevice(key);
-                        showToast(ok ? 'Dispositivo autenticado' : 'Autenticacion rechazada', ok ? 'success' : 'error');
-                      }}>
-                        Autenticar
-                      </button>
-                    )}
-                    {!blocked && (
-                      <button className="action-btn guardian-block-btn" onClick={() => {
-                        usbService.blockDevice(key, 'Bloqueo manual');
-                        showToast('Dispositivo bloqueado', 'warning');
-                      }}>
-                        Bloquear
-                      </button>
-                    )}
-                    {blocked && (
-                      <button className="action-btn" onClick={() => {
-                        usbService.unblockDevice(key);
-                        showToast('Dispositivo desbloqueado', 'info');
-                      }}>
-                        Desbloquear
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {usbSupported && (
-          <button
-            className="action-btn guardian-scan-btn"
-            onClick={async () => {
-              const dev = await usbService.requestDevice();
-              if (dev) showToast('Dispositivo USB detectado', 'info');
-              else showToast('No se selecciono dispositivo', 'warning');
-            }}
-          >
-            Escanear puertos USB
-          </button>
-        )}
-      </div>
+      <USBStoragePanel />
 
       <div className="guardian-monitoring-status">
         <div className="guardian-monitor-row">
