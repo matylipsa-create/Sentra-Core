@@ -4,6 +4,8 @@ import { VoiceOrbButton } from './VoiceOrbButton';
 import { ModeSelector } from './ModeSelector';
 import { VisionPanel } from './VisionPanel';
 import { SentinelPanel } from './SentinelPanel';
+import { CognitiveLoadPanel } from './CognitiveLoadPanel';
+import { FieldLogPanel } from './FieldLogPanel';
 import { deviceManager } from '../core/DeviceManager';
 import { bioSoftware } from '../core/BioSoftwareInterface';
 
@@ -50,7 +52,11 @@ export function UnifiedUI() {
       </header>
 
       <main className="unified-content" aria-live="polite">
-        {uiMode === 'vision' ? (
+        {activeModule === 'cognitivo' ? (
+          <CognitiveLoadPanel />
+        ) : activeModule === 'bitacora' ? (
+          <FieldLogPanel />
+        ) : uiMode === 'vision' ? (
           <VisionPanel
             processCommand={processCommand}
             lastResponse={lastResponse}

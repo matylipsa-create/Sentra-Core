@@ -17,11 +17,14 @@ import { contextGovernor } from '../core/ContextGovernor';
 import { selfPerceptionLoop } from '../core/SelfPerceptionLoop';
 import { identityManager } from '../core/IdentityManager';
 import { deviceSensorManager, type AvailableSensor } from '../core/DeviceSensorManager';
+import { cognitiveLoadManager, CognitiveMode } from '../core/CognitiveLoadManager';
+import { fieldLogManager, FieldLogEntry } from '../core/FieldLogManager';
+import { buildPipelineManager, BuildStatus, BuildResult, BuildType } from '../core/BuildPipelineManager';
 
 export type ModuleName =
   | 'vision' | 'seguridad' | 'movimiento' | 'juego'
   | 'aprendizaje' | 'impacto' | 'silencio' | 'evidencia' | 'bio' | 'guardian'
-  | 'identidad' | 'autopercepcion';
+  | 'identidad' | 'autopercepcion' | 'cognitivo' | 'bitacora';
 
 export type UiMode = 'vision' | 'sentinel';
 
@@ -48,6 +51,11 @@ export interface AppState {
   usbPorts: Map<string, PortStatus>;
   availableSensors: AvailableSensor[];
   uiMode: UiMode;
+  cognitiveLoad: number;
+  cognitiveMode: CognitiveMode;
+  fieldLogEntries: FieldLogEntry[];
+  buildStatus: BuildStatus;
+  currentBuild: BuildResult | null;
 }
 
 interface AppContextValue extends AppState {
@@ -72,6 +80,12 @@ interface AppContextValue extends AppState {
   deactivateGuardian: () => void;
   refreshSensors: () => AvailableSensor[];
   setUiMode: (mode: UiMode) => void;
+  setCognitiveMode: (mode: CognitiveMode) => void;
+  resetCognitiveLoad: () => void;
+  addFieldMarker: (label: string) => void;
+  exportFieldLog: () => Promise<void>;
+  triggerBuild: (type: BuildType) => Promise<void>;
+  optimizeBuildForLowEnd: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -112,6 +126,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isBacterialGuardianActive: false, guardianStatus: null, usbPorts: new Map(),
       availableSensors: [],
       uiMode: 'vision',
+      cognitiveLoad: 0.3,
+      cognitiveMode: 'ASSIST',
+      fieldLogEntries: [],
+      buildStatus: 'idle',
+      currentBuild: null,
     };
   });
 
@@ -133,6 +152,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           );
           identityManager.persistInitialIdentity();
         }
+      });
+      cognitiveLoadManager.init();
+      fieldLogManager.init().then(() => {
+        setState((s) => ({ ...s, fieldLogEntries: fieldLogManager.getRecentEntries(30) }));
       });
     });
   }, []);
@@ -354,6 +377,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, uiMode: mode }));
   }, []);
 
+  const setCognitiveMode = useCallback((mode: CognitiveMode) => {
+    cognitiveLoadManager.setMode(mode);
+    setState((s) => ({ ...s, cognitiveMode: mode }));
+  }, []);
+
+  const resetCognitiveLoad = useCallback(() => {
+    cognitiveLoadManager.resetLoad();
+    setState((s) => ({ ...s, cognitiveLoad: 0.3, cognitiveMode: 'ASSIST' }));
+  }, []);
+
+  const addFieldMarker = useCallback((label: string) => {
+    fieldLogManager.addMarker(label, null);
+    setState((s) => ({ ...s, fieldLogEntries: fieldLogManager.getRecentEntries(30) }));
+  }, []);
+
+  const exportFieldLog = useCallback(async () => {
+    await fieldLogManager.exportLog();
+  }, []);
+
+  const triggerBuild = useCallback(async (type: BuildType) => {
+    setState((s) => ({ ...s, buildStatus: 'running' }));
+    const result = await buildPipelineManager.triggerBuild(type);
+    setState((s) => ({ ...s, buildStatus: result.status, currentBuild: result }));
+  }, []);
+
+  const optimizeBuildForLowEnd = useCallback(() => {
+    buildPipelineManager.optimizeForLowEnd();
+  }, []);
+
   const value: AppContextValue = {
     ...state, setModule, toggleVoice, toggleHumanVeto,
     setPowerMode, setSyncTransport, processCommand, setGeminiRemote,
@@ -363,6 +415,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleBio, startBioSession, stopBioSession, getBioReframe,
     activateGuardian, deactivateGuardian, refreshSensors,
     setUiMode,
+    setCognitiveMode, resetCognitiveLoad,
+    addFieldMarker, exportFieldLog,
+    triggerBuild, optimizeBuildForLowEnd,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
