@@ -23,6 +23,8 @@ export type ModuleName =
   | 'aprendizaje' | 'impacto' | 'silencio' | 'evidencia' | 'bio' | 'guardian'
   | 'identidad' | 'autopercepcion';
 
+export type UiMode = 'vision' | 'sentinel';
+
 export interface AppState {
   activeModule: ModuleName;
   voiceEnabled: boolean;
@@ -45,6 +47,7 @@ export interface AppState {
   guardianStatus: GuardianStatus | null;
   usbPorts: Map<string, PortStatus>;
   availableSensors: AvailableSensor[];
+  uiMode: UiMode;
 }
 
 interface AppContextValue extends AppState {
@@ -68,6 +71,7 @@ interface AppContextValue extends AppState {
   activateGuardian: () => void;
   deactivateGuardian: () => void;
   refreshSensors: () => AvailableSensor[];
+  setUiMode: (mode: UiMode) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -107,6 +111,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       bioCurrentSession: null, bioSessions: [], bioReframe: null,
       isBacterialGuardianActive: false, guardianStatus: null, usbPorts: new Map(),
       availableSensors: [],
+      uiMode: 'vision',
     };
   });
 
@@ -345,6 +350,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshSensors = useCallback(() => deviceSensorManager.detectAvailableSensors(), []);
 
+  const setUiMode = useCallback((mode: UiMode) => {
+    setState((s) => ({ ...s, uiMode: mode }));
+  }, []);
+
   const value: AppContextValue = {
     ...state, setModule, toggleVoice, toggleHumanVeto,
     setPowerMode, setSyncTransport, processCommand, setGeminiRemote,
@@ -353,6 +362,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     exportData, getEvidence,
     toggleBio, startBioSession, stopBioSession, getBioReframe,
     activateGuardian, deactivateGuardian, refreshSensors,
+    setUiMode,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
