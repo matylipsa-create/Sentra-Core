@@ -17,6 +17,7 @@ import {
   type ContactReading,
   type GasReading,
   type FlowReading,
+  type LocationReading,
 } from "./SensorHub";
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -78,6 +79,10 @@ export interface PerceptionThresholds {
     pressureMax: number;
     tempMax: number;
   };
+  location: {
+    accuracyMin: number;
+    speedMax: number;
+  };
 }
 
 const DEFAULT_THRESHOLDS: PerceptionThresholds = {
@@ -88,6 +93,7 @@ const DEFAULT_THRESHOLDS: PerceptionThresholds = {
   contact: { tamperAlert: true },
   gas: { co2Max: 1000, vocMax: 0.3, coMax: 9, methaneMax: 50, aqiMax: 150 },
   flow: { rateMin: 0.5, rateMax: 50, pressureMax: 6, tempMax: 80 },
+  location: { accuracyMin: 5, speedMax: 50 },
 };
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -161,6 +167,9 @@ class PerceptionEngine {
         break;
       case "flow":
         this.processFlow(reading, reading.value as FlowReading);
+        break;
+      case "location":
+        this.processLocation(reading, reading.value as LocationReading);
         break;
     }
   }
@@ -389,6 +398,28 @@ class PerceptionEngine {
         level: "warning",
         message: `Temperatura de fluido alta: ${v.temperatureC.toFixed(1)} °C`,
         data: { temperatureC: v.temperatureC },
+      });
+    }
+  }
+
+  private processLocation(r: SensorReading, v: LocationReading): void {
+    const t = this.thresholds.location;
+    if (v.accuracy > 0 && v.accuracy < t.accuracyMin) {
+      this.emit({
+        category: "location",
+        sensorId: r.sensorId,
+        level: "info",
+        message: `GPS de alta precision: ${v.accuracy.toFixed(0)} m`,
+        data: { accuracy: v.accuracy },
+      });
+    }
+    if (v.speed !== null && v.speed > t.speedMax) {
+      this.emit({
+        category: "location",
+        sensorId: r.sensorId,
+        level: "warning",
+        message: `Velocidad elevada: ${v.speed.toFixed(1)} m/s`,
+        data: { speed: v.speed },
       });
     }
   }

@@ -17,7 +17,8 @@ export type SensorCategory =
   | "audio"
   | "contact"
   | "gas"
-  | "flow";
+  | "flow"
+  | "location";
 
 export type SensorStatus = "online" | "offline" | "warning" | "error";
 
@@ -105,6 +106,15 @@ export interface FlowReading {
   pressureBar: number;
 }
 
+export interface LocationReading {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  altitude: number | null;
+  speed: number | null;
+  heading: number | null;
+}
+
 /** Unión discriminada de lecturas con tipado fuerte por categoría. */
 export type TypedReading =
   | { category: "ambient"; value: AmbientReading }
@@ -113,7 +123,8 @@ export type TypedReading =
   | { category: "audio"; value: AudioReading }
   | { category: "contact"; value: ContactReading }
   | { category: "gas"; value: GasReading }
-  | { category: "flow"; value: FlowReading };
+  | { category: "flow"; value: FlowReading }
+  | { category: "location"; value: LocationReading };
 
 // ──────────────────────────────────────────────────────────────────────────
 // Sensor genérico — interfaz común que todos los sensores implementan

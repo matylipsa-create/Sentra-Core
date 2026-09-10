@@ -34,6 +34,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   contact: "Contacto",
   gas: "Gas",
   flow: "Flujo",
+  location: "Ubicación",
 };
 
 const STATUS_COLORS: Record<SensorStatus, { bg: string; dot: string; text: string }> = {
@@ -148,7 +149,7 @@ export function SensorDashboard() {
           <div style={styles.logoDot} />
           <div>
             <h1 style={styles.title}>SentraCore</h1>
-            <p style={styles.subtitle}>Red de Sensores · v4.2.0</p>
+            <p style={styles.subtitle}>Red de Sensores · v4.2.1</p>
           </div>
         </div>
         <div style={styles.headerRight}>
