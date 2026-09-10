@@ -12,10 +12,11 @@ import { storageService } from '../services/StorageService';
 import { PowerMode } from '../core/PowerManager';
 import { bioSoftware, BioProtocol, BioSession } from '../core/BioSoftwareInterface';
 import { bacterialGuardian, GuardianStatus } from '../core/BacterialGuardian';
-import { usbService, USBDeviceInfo, PortStatus } from '../services/USBService';
+import { usbService, PortStatus } from '../services/USBService';
 import { contextGovernor } from '../core/ContextGovernor';
 import { selfPerceptionLoop } from '../core/SelfPerceptionLoop';
 import { identityManager } from '../core/IdentityManager';
+import { deviceSensorManager, type AvailableSensor } from '../core/DeviceSensorManager';
 
 export type ModuleName =
   | 'vision' | 'seguridad' | 'movimiento' | 'juego'
@@ -43,6 +44,7 @@ export interface AppState {
   isBacterialGuardianActive: boolean;
   guardianStatus: GuardianStatus | null;
   usbPorts: Map<string, PortStatus>;
+  availableSensors: AvailableSensor[];
 }
 
 interface AppContextValue extends AppState {
@@ -65,6 +67,7 @@ interface AppContextValue extends AppState {
   getBioReframe: () => void;
   activateGuardian: () => void;
   deactivateGuardian: () => void;
+  refreshSensors: () => AvailableSensor[];
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -103,6 +106,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       bioEnabled: savedBio, bioActiveProtocol: null,
       bioCurrentSession: null, bioSessions: [], bioReframe: null,
       isBacterialGuardianActive: false, guardianStatus: null, usbPorts: new Map(),
+      availableSensors: [],
     };
   });
 
@@ -339,6 +343,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     voiceManager.speak('Guardian bacteriano desactivado', 2);
   }, []);
 
+  const refreshSensors = useCallback(() => deviceSensorManager.detectAvailableSensors(), []);
+
   const value: AppContextValue = {
     ...state, setModule, toggleVoice, toggleHumanVeto,
     setPowerMode, setSyncTransport, processCommand, setGeminiRemote,
@@ -346,7 +352,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     togglePassiveListening,
     exportData, getEvidence,
     toggleBio, startBioSession, stopBioSession, getBioReframe,
-    activateGuardian, deactivateGuardian,
+    activateGuardian, deactivateGuardian, refreshSensors,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

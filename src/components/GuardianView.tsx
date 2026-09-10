@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useBacterialGuardian } from '../hooks/useBacterialGuardian';
 import { useToast } from '../context/ToastContext';
-import { usbService } from '../services/USBService';
-import { bacterialGuardian, GuardianState } from '../core/BacterialGuardian';
+import { GuardianState } from '../core/BacterialGuardian';
 import { tritToValue, Trit } from '../core/TernaryMath';
 import { USBStoragePanel } from './USBStoragePanel';
 
@@ -36,14 +35,6 @@ function tritSymbol(t: Trit): string {
 export function GuardianView() {
   const { status, activate, deactivate, resolveAlert, clearAlerts, dismissQuarantine, checkChain } = useBacterialGuardian();
   const { showToast } = useToast();
-  const [usbSupported] = useState(() => usbService.isSupported());
-  const [devices, setDevices] = useState(usbService.getDevices());
-
-  useEffect(() => {
-    const unsub = usbService.subscribe((d) => setDevices([...d]));
-    return unsub;
-  }, []);
-
   useEffect(() => {
     if (!status) return;
     if (status.state === 'quarantine') {

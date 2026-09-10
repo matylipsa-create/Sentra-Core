@@ -1,6 +1,6 @@
 import { evolis } from './EVOLIS';
 
-export type AgentTone = 'formal' | 'casual' | 'poetico' | 'tecnico';
+export type AgentTone = 'formal' | 'casual' | 'poetico' | 'tecnico' | 'directo';
 export type AgentStyle = 'directo' | 'reflexivo' | 'amigable';
 
 export interface AgentIdentity {
@@ -44,6 +44,7 @@ const TONE_DESCRIPTIONS: Record<AgentTone, string> = {
   casual: 'Respuestas cercanas y conversacionales',
   poetico: 'Respuestas con metaforas y ritmo',
   tecnico: 'Respuestas detalladas y tecnicas',
+  directo: 'Respuestas claras y sin rodeos',
 };
 
 const STYLE_DESCRIPTIONS: Record<AgentStyle, string> = {
@@ -138,8 +139,8 @@ export class IdentityManager {
       const newVal = updates[key];
       const oldVal = this.identity[key];
       if (newVal !== undefined && newVal !== oldVal) {
-        (this.identity as Record<string, unknown>)[key] = newVal;
-        (changes as Record<string, unknown>)[key] = newVal;
+        (this.identity as unknown as Record<string, unknown>)[key] = newVal;
+        (changes as unknown as Record<string, unknown>)[key] = newVal;
       }
     }
     if (Object.keys(changes).length > 0) {

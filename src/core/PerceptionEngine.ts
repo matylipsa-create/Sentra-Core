@@ -38,6 +38,18 @@ export interface PerceptionEvent {
 
 export type PerceptionListener = (event: PerceptionEvent) => void;
 
+export interface PerceptionData {
+  visionDetections?: Array<{ class: string; score: number; bbox: [number, number, number, number] }>;
+  imageWidth?: number;
+  imageHeight?: number;
+  summary?: string;
+}
+
+export interface PerceptionSensitivity {
+  confidenceThreshold: number;
+  contextLabel: string;
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Umbrales configurables
 // ──────────────────────────────────────────────────────────────────────────
@@ -100,13 +112,14 @@ const DEFAULT_THRESHOLDS: PerceptionThresholds = {
 // PerceptionEngine
 // ──────────────────────────────────────────────────────────────────────────
 
-class PerceptionEngine {
+export class PerceptionEngine {
   private listeners = new Set<PerceptionListener>();
   private thresholds: PerceptionThresholds = DEFAULT_THRESHOLDS;
   private eventCount = 0;
   private unsubscribeReading: (() => void) | null = null;
   private history: PerceptionEvent[] = [];
   private readonly maxHistory = 200;
+  private bioContext: { activeProtocol?: string | null; stressLevel?: number; focusLevel?: number } | null = null;
 
   // ── Configuración ─────────────────────────────────────────────────────
 
@@ -116,6 +129,34 @@ class PerceptionEngine {
 
   getThresholds(): PerceptionThresholds {
     return this.thresholds;
+  }
+
+  setBioContext(context: { activeProtocol?: string | null; stressLevel?: number; focusLevel?: number }): void {
+    this.bioContext = context;
+  }
+
+  getSensitivity(): PerceptionSensitivity {
+    const stress = this.bioContext?.stressLevel ?? 0.5;
+    return {
+      confidenceThreshold: Math.max(0.25, Math.min(0.85, 0.5 + stress * 0.2)),
+      contextLabel: this.bioContext?.activeProtocol ?? 'neutral',
+    };
+  }
+
+  process(data: PerceptionData): PerceptionData;
+  process(reading: SensorReading): void;
+  process(input: PerceptionData | SensorReading): PerceptionData | void {
+    if ('category' in input) {
+      this.processSensorReading(input);
+      return;
+    }
+    return { ...input, summary: this.summarize(input) };
+  }
+
+  summarize(data: PerceptionData): string {
+    const detections = data.visionDetections ?? [];
+    if (detections.length === 0) return data.summary ?? 'Sin objetos detectados';
+    return `Objetos detectados: ${detections.map((d) => `${d.class} (${Math.round(d.score * 100)}%)`).join(', ')}`;
   }
 
   // ── Suscripciones ─────────────────────────────────────────────────────
@@ -133,7 +174,7 @@ class PerceptionEngine {
 
   start(): void {
     if (this.unsubscribeReading) return;
-    this.unsubscribeReading = sensorHub.onReading((r) => this.process(r));
+    this.unsubscribeReading = sensorHub.onReading((r) => this.processSensorReading(r));
   }
 
   stop(): void {
@@ -145,7 +186,7 @@ class PerceptionEngine {
 
   // ── Procesamiento ────────────────────────────────────────────────────
 
-  process(reading: SensorReading): void {
+  private processSensorReading(reading: SensorReading): void {
     switch (reading.category) {
       case "ambient":
         this.processAmbient(reading, reading.value as AmbientReading);

@@ -21,19 +21,16 @@ export type PortStatus = 'blocked' | 'allowed' | 'infected';
 
 type Trit = 1 | 0 | -1;
 
-const KNOWN_VENDORS: number[] = [];
 const SUSPICIOUS_VID_RANGES: { min: number; max: number; reason: string }[] = [
   { min: 0x0000, max: 0x0000, reason: 'VID invalido o nulo' },
 ];
 
-const AUTH_GRACE_MS = 5000;
 
 export class USBService {
   private devices: Map<string, USBDeviceInfo> = new Map();
   private blockedDevices: Set<string> = new Set();
   private infectedDevices: Set<string> = new Set();
   private listeners: Set<(devices: USBDeviceInfo[]) => void> = new Set();
-  private authChallenges: Map<string, USBAuthChallenge> = new Map();
   private monitoring = false;
 
   isSupported(): boolean {
@@ -136,7 +133,7 @@ export class USBService {
     return true;
   }
 
-  blockDevice(key: string, reason?: string): void {
+  blockDevice(key: string, _reason?: string): void {
     this.blockedDevices.add(key);
     const info = this.devices.get(key);
     if (info) {

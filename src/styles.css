@@ -24,6 +24,34 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+.sentra-app-shell { min-height: 100vh; }
+
+.accessible-sensor-ui { max-width: 1400px; margin: 0 auto; padding: 28px 32px 12px; }
+.sensor-ui-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.sensor-ui-eyebrow { color: var(--accent); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+.sensor-ui-header h2 { color: var(--text-bright); font-size: 1.45rem; line-height: 1.2; }
+.sensor-ui-description { color: var(--text-dim); max-width: 680px; margin: 8px 0 20px; }
+.sensor-ui-refresh, .accessible-sensor-card button { min-height: 56px; padding: 12px 18px; border: 1px solid var(--primary-dark); border-radius: var(--radius-sm); background: var(--bg-elevated); color: var(--primary-light); cursor: pointer; transition: 0.2s ease; }
+.sensor-ui-refresh:hover, .accessible-sensor-card button:hover:not(:disabled) { border-color: var(--neon-focus); color: var(--neon-focus); transform: translateY(-1px); }
+.accessible-sensor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.accessible-sensor-card { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); transition: border-color 0.2s, box-shadow 0.2s; }
+.accessible-sensor-card.is-active { border-color: var(--accent-dark); box-shadow: 0 0 18px rgba(0, 255, 136, 0.1); }
+.accessible-sensor-card > div { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.accessible-sensor-card strong { color: var(--text-bright); font-size: 0.92rem; }
+.sensor-status-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: var(--text-dim); }
+.is-active .sensor-status-dot { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.sensor-device { color: var(--text-dim); font-size: 0.7rem; margin-left: auto; }
+.accessible-sensor-card p { color: var(--text-dim); font-size: 0.78rem; }
+.accessible-sensor-card button { grid-column: 1 / -1; width: 100%; }
+.accessible-sensor-card button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+@media (max-width: 700px) {
+  .accessible-sensor-ui { padding: 20px 16px 8px; }
+  .sensor-ui-header { align-items: stretch; flex-direction: column; }
+  .sensor-ui-refresh { width: 100%; }
+}
+
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   background: var(--bg);

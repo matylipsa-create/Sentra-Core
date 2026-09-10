@@ -1,6 +1,6 @@
 import { evolis } from './EVOLIS';
 import { usbService, USBDeviceInfo } from '../services/USBService';
-import { ternaryEthics, ternaryTrust, Trit, TernaryEvaluation, TRIT_POS, TRIT_NEUTRAL, TRIT_NEG } from './TernaryMath';
+import { ternaryEthics, Trit, TernaryEvaluation, TRIT_POS, TRIT_NEG } from './TernaryMath';
 
 export type GuardianState = 'dormant' | 'active' | 'alert' | 'quarantine';
 

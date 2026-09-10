@@ -38,7 +38,6 @@ export class VoiceManager {
   private dedupeWindowMs = 5000;
   private enabled = true;
   private selectedVoiceURI: string | null = null;
-  private voicesLoaded = false;
   private passiveRecognition: SpeechRecognition | null = null;
   private passiveActive = false;
   private passiveCallback: PassiveListenCallback | null = null;
@@ -49,7 +48,6 @@ export class VoiceManager {
       this.synth = window.speechSynthesis;
       this.selectedVoiceURI = this.loadSavedVoice();
       this.synth.addEventListener('voiceschanged', () => {
-        this.voicesLoaded = true;
         this.applySavedVoice();
       });
     }

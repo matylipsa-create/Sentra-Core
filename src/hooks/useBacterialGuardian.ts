@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { bacterialGuardian, GuardianStatus, GuardianAlert } from '../core/BacterialGuardian';
+import { bacterialGuardian, GuardianStatus } from '../core/BacterialGuardian';
 
 export function useBacterialGuardian(): {
   status: GuardianStatus | null;

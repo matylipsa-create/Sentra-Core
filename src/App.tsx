@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { SensorDashboard } from "./components/SensorDashboard";
+import { AccessibleSensorUI } from "./components/AccessibleSensorUI";
+import { deviceSensorManager } from "./core/DeviceSensorManager";
 import { sensorHub } from "./core/SensorHub";
 import { perceptionEngine } from "./core/PerceptionEngine";
 import { sensorModule } from "./modules/SensorModule";
@@ -9,6 +11,8 @@ import { createGPSSensor } from "./services/GPSSensorService";
 
 export default function App() {
   useEffect(() => {
+    deviceSensorManager.detectAvailableSensors();
+
     // Sensores reales nativos (Accelerometer, Gyroscope, AmbientLight, GPS)
     for (const sensor of createNativeSensors()) {
       try { sensorHub.register(sensor); } catch { /* id collision */ }
@@ -34,5 +38,5 @@ export default function App() {
     };
   }, []);
 
-  return <SensorDashboard />;
+  return <main className="sentra-app-shell"><AccessibleSensorUI /><SensorDashboard /></main>;
 }
