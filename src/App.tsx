@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BlindUnifiedUI } from "./components/BlindUnifiedUI";
+import { SentraVisionScreen } from "./components/SentraVisionScreen";
 import { deviceSensorManager } from "./core/DeviceSensorManager";
 import { sensorHub } from "./core/SensorHub";
 import { perceptionEngine } from "./core/PerceptionEngine";
@@ -36,5 +36,5 @@ export default function App() {
     };
   }, []);
 
-  return <BlindUnifiedUI />;
+  return <SentraVisionScreen />;
 }
