@@ -5,6 +5,8 @@ import { deviceManager } from '../core/DeviceManager';
 import { BlindModeSelector } from './BlindModeSelector';
 import { BlindVisionPanel } from './BlindVisionPanel';
 import { BlindSentinelPanel } from './BlindSentinelPanel';
+import { BlindTactileQuadrants } from './BlindTactileQuadrants';
+import { sentraGuardianHub } from '../core/SentraGuardianHub';
 
 type OrbState = 'idle' | 'listening' | 'speaking' | 'disabled';
 
@@ -148,6 +150,29 @@ export function BlindUnifiedUI() {
     deviceManager.vibrate(80);
   };
 
+  const handleQuadrantAction = (action: string, quadrant: string) => {
+    switch (action) {
+      case 'TOGGLE_EYES_MODE':
+      case 'DESCRIBE_NOW':
+        sentraGuardianHub.requestDescription();
+        break;
+      case 'SENTINEL_STATUS': {
+        const state = sentraGuardianHub.getState();
+        voiceManager.speak(
+          state.sentinelAlertActive
+            ? 'Guardian en alerta. Perimetro comprometido.'
+            : 'Perimetro seguro. Sin alertas.',
+          2
+        );
+        break;
+      }
+      case 'PANIC_OR_PERIMETER':
+        sentraGuardianHub.silenceAll();
+        voiceManager.speak('Silenciado. Perimetro fijado.', 2);
+        break;
+    }
+  };
+
   const moralBlocked = lastMoralEval && !lastMoralEval.allowed;
   const moralReason = lastMoralEval?.decisions.find((d) => !d.passed)?.reason;
 
@@ -284,6 +309,9 @@ export function BlindUnifiedUI() {
           <span className="blind-trigger-label">{humanVeto ? 'Veto ON' : 'Veto OFF'}</span>
         </button>
       </nav>
+
+      {/* Cuadrantes táctiles ciegos: capa invisible sobre toda la pantalla */}
+      <BlindTactileQuadrants onAction={handleQuadrantAction} />
     </div>
   );
 }
