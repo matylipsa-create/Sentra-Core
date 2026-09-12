@@ -55,6 +55,58 @@ function fromGovernorLevel(level: GovernorLevel): PriorityLevel {
   return 'descriptive';
 }
 
+/**
+ * Registra un evento en EVOLIS sin romper si falla.
+ */
+function safeEvolisRecord(module: string, type: string, detail: string): void {
+  try {
+    if (evolis && typeof (evolis as any).record === 'function') {
+      void (evolis as any).record(module, type, detail);
+    }
+  } catch (_) {
+    /* noop: EVOLIS no debe romper el flujo del hub */
+  }
+}
+
+/**
+ * setTimeout seguro (funciona en browser y SSR).
+ */
+function safeSetTimeout(fn: () => void, ms: number): number {
+  if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+    return window.setTimeout(fn, ms);
+  }
+  return setTimeout(fn, ms) as unknown as number;
+}
+
+/**
+ * clearTimeout seguro.
+ */
+function safeClearTimeout(id: number | null): void {
+  if (id === null) return;
+  try {
+    if (typeof window !== 'undefined' && typeof window.clearTimeout === 'function') {
+      window.clearTimeout(id);
+    } else {
+      clearTimeout(id as unknown as ReturnType<typeof setTimeout>);
+    }
+  } catch (_) {
+    /* noop */
+  }
+}
+
+/**
+ * Cancela el speechSynthesis si está disponible.
+ */
+function safeCancelSpeech(): void {
+  try {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+  } catch (_) {
+    /* noop */
+  }
+}
+
 class SentraGuardianHub {
   private sentinelAlertActive = false;
   private lastSentinelEvent: SentinelEventInput | null = null;
@@ -80,7 +132,9 @@ class SentraGuardianHub {
   subscribe(listener: HubListener): () => void {
     this.listeners.add(listener);
     listener(this.getState());
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   setSpatialAudioEnabled(enabled: boolean): void {
@@ -89,45 +143,90 @@ class SentraGuardianHub {
   }
 
   initSpatialAudio(): void {
-    if (!spatialAudioEngine.isInitialized()) {
-      spatialAudioEngine.init();
+    try {
+      if (spatialAudioEngine && typeof spatialAudioEngine.init === 'function') {
+        if (typeof (spatialAudioEngine as any).isInitialized === 'function') {
+          if (!(spatialAudioEngine as any).isInitialized()) {
+            spatialAudioEngine.init();
+          }
+        } else {
+          spatialAudioEngine.init();
+        }
+      }
+    } catch (_) {
+      /* noop: audio 3D es opcional, no debe romper el hub */
     }
   }
 
   initMultimodal(): void {
     if (this._multimodalInitialized) return;
 
-    bacterialGuardian.setContextGovernor(contextGovernor);
-    eventRouter.setContextGovernor(contextGovernor);
-    this.accessibility.setVoiceManager(voiceManager);
+    try {
+      if (bacterialGuardian && typeof (bacterialGuardian as any).setContextGovernor === 'function') {
+        (bacterialGuardian as any).setContextGovernor(contextGovernor);
+      }
+      if (eventRouter && typeof (eventRouter as any).setContextGovernor === 'function') {
+        (eventRouter as any).setContextGovernor(contextGovernor);
+      }
+      if (this.accessibility && typeof (this.accessibility as any).setVoiceManager === 'function') {
+        (this.accessibility as any).setVoiceManager(voiceManager);
+      }
 
-    if (typeof window !== 'undefined') {
-      (window as unknown as { __sentraAccessibility?: SentraVisionAccessibility }).__sentraAccessibility =
-        this.accessibility;
+      if (typeof window !== 'undefined') {
+        (window as unknown as { __sentraAccessibility?: SentraVisionAccessibility }).__sentraAccessibility =
+          this.accessibility;
+      }
+
+      this._multimodalInitialized = true;
+      console.log('[SentraGuardianHub] Multimodal wiring completado.');
+    } catch (err) {
+      console.warn('[SentraGuardianHub] Error en initMultimodal:', err);
     }
-
-    this._multimodalInitialized = true;
-    console.log('[SentraGuardianHub] Multimodal wiring completado.');
   }
 
   onVisionDetection(detection: VisionDetectionInput): void {
-    if (this.sentinelAlertActive) {
-      void evolis.record('guardian_hub', 'vision_blocked_by_sentinel', detection.label);
+    // FIX BUG 1+2: consultar governor, no solo estado interno.
+    // Si el governor está en CRITICAL (por Sentinel, BacterialGuardian, etc.),
+    // bloquear visión sin importar quién lo puso.
+    if (this.sentinelAlertActive || contextGovernor.isCriticalActive()) {
+      safeEvolisRecord('guardian_hub', 'vision_blocked_by_sentinel', detection.label);
       return;
     }
 
     this.lastVisionDetection = detection;
-    contextGovernor.setPriorityLevel('NAVIGATION');
 
-    priorityQueue.enqueue({
-      level: 'navigation',
-      type: 'vision_detection',
-      message: detection.label,
-      data: { confidence: detection.confidence, panX: detection.panX, distance: detection.distance },
-    });
+    // FIX BUG 2: solo poner NAVIGATION si el governor no está ya en un nivel superior.
+    // No pisar CRITICAL.
+    const currentLevel = contextGovernor.getPriorityLevel();
+    if (currentLevel !== 'CRITICAL') {
+      contextGovernor.setPriorityLevel('NAVIGATION');
+    }
 
-    if (this.spatialAudioEnabled && detection.panX !== undefined && detection.distance !== undefined) {
-      spatialAudioEngine.playSpatialBeep(detection.panX, detection.distance);
+    try {
+      priorityQueue.enqueue({
+        level: 'navigation',
+        type: 'vision_detection',
+        message: detection.label,
+        data: {
+          confidence: detection.confidence,
+          panX: detection.panX,
+          distance: detection.distance,
+        },
+      });
+    } catch (_) {
+      /* noop */
+    }
+
+    if (
+      this.spatialAudioEnabled &&
+      detection.panX !== undefined &&
+      detection.distance !== undefined
+    ) {
+      try {
+        spatialAudioEngine.playSpatialBeep(detection.panX, detection.distance);
+      } catch (_) {
+        /* noop */
+      }
     }
 
     this.notify();
@@ -140,44 +239,62 @@ class SentraGuardianHub {
       this.sentinelAlertActive = true;
       contextGovernor.setPriorityLevel('CRITICAL');
 
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
+      safeCancelSpeech();
+      try {
+        deviceManager.vibratePattern('SENTINEL_ALERT');
+      } catch (_) {
+        /* noop */
       }
-
-      deviceManager.vibratePattern('SENTINEL_ALERT');
 
       this.announceCritical(event.message);
 
-      priorityQueue.enqueue({
-        level: 'critical',
-        type: 'sentinel_alert',
-        message: event.message,
-        data: { severity: event.severity, source: event.source },
-      });
+      try {
+        priorityQueue.enqueue({
+          level: 'critical',
+          type: 'sentinel_alert',
+          message: event.message,
+          data: { severity: event.severity, source: event.source },
+        });
+      } catch (_) {
+        /* noop */
+      }
 
-      void evolis.record('guardian_hub', 'SENTINEL_ALERT', JSON.stringify({
-        severity: event.severity,
-        source: event.source,
-        message: event.message,
-      }));
+      safeEvolisRecord(
+        'guardian_hub',
+        'SENTINEL_ALERT',
+        JSON.stringify({
+          severity: event.severity,
+          source: event.source,
+          message: event.message,
+        })
+      );
 
-      if (this.sentinelReleaseTimer) clearTimeout(this.sentinelReleaseTimer);
-      this.sentinelReleaseTimer = window.setTimeout(() => {
+      if (this.sentinelReleaseTimer) safeClearTimeout(this.sentinelReleaseTimer);
+      this.sentinelReleaseTimer = safeSetTimeout(() => {
         this.sentinelAlertActive = false;
-        contextGovernor.setPriorityLevel('DESCRIPTIVE');
+        // FIX BUG 3: volver a NAVIGATION (default), no a DESCRIPTIVE.
+        contextGovernor.setPriorityLevel('NAVIGATION');
         this.sentinelReleaseTimer = null;
-        void evolis.record('guardian_hub', 'PRIORITY_CHANGE', 'sentinel_released');
+        safeEvolisRecord('guardian_hub', 'PRIORITY_CHANGE', 'sentinel_released');
         this.notify();
       }, SENTINEL_RELEASE_MS);
     } else if (event.severity === 'medium') {
-      deviceManager.vibratePattern('WARNING');
+      try {
+        deviceManager.vibratePattern('WARNING');
+      } catch (_) {
+        /* noop */
+      }
       this.announceNormal(event.message);
-      priorityQueue.enqueue({
-        level: 'critical',
-        type: 'sentinel_warning',
-        message: event.message,
-        data: { severity: event.severity, source: event.source },
-      });
+      try {
+        priorityQueue.enqueue({
+          level: 'critical',
+          type: 'sentinel_warning',
+          message: event.message,
+          data: { severity: event.severity, source: event.source },
+        });
+      } catch (_) {
+        /* noop */
+      }
     } else {
       this.announceNormal(event.message);
     }
@@ -186,63 +303,101 @@ class SentraGuardianHub {
   }
 
   requestDescription(): void {
-    if (this.sentinelAlertActive) return;
+    if (this.sentinelAlertActive || contextGovernor.isCriticalActive()) return;
     contextGovernor.setPriorityLevel('DESCRIPTIVE');
     this.notify();
   }
 
   silenceAll(): void {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+    safeCancelSpeech();
+    try {
+      spatialAudioEngine.stopAll();
+    } catch (_) {
+      /* noop */
     }
-    spatialAudioEngine.stopAll();
     this.sentinelAlertActive = false;
-    contextGovernor.setPriorityLevel('DESCRIPTIVE');
+    contextGovernor.setPriorityLevel('NAVIGATION');
     if (this.sentinelReleaseTimer) {
-      clearTimeout(this.sentinelReleaseTimer);
+      safeClearTimeout(this.sentinelReleaseTimer);
       this.sentinelReleaseTimer = null;
     }
-    void evolis.record('guardian_hub', 'SILENCE_ALL', 'manual');
+    safeEvolisRecord('guardian_hub', 'SILENCE_ALL', 'manual');
     this.notify();
   }
 
   registerQuadrantTap(quadrant: Quadrant, handler: QuadrantHandler): void {
     this.quadrantTapHandlers.set(quadrant, handler);
-    quadrantGestures.onQuadrantTap(quadrant, () => {
-      this.initSpatialAudio();
-      deviceManager.vibratePattern('QUADRANT_TAP');
-      void evolis.record('guardian_hub', 'QUADRANT_TAP', quadrant);
-      handler(quadrant);
-    });
+    try {
+      quadrantGestures.onQuadrantTap(quadrant, () => {
+        this.initSpatialAudio();
+        try {
+          deviceManager.vibratePattern('QUADRANT_TAP');
+        } catch (_) {
+          /* noop */
+        }
+        safeEvolisRecord('guardian_hub', 'QUADRANT_TAP', quadrant);
+        handler(quadrant);
+      });
+    } catch (err) {
+      console.warn('[SentraGuardianHub] Error registrando tap:', err);
+    }
   }
 
   registerQuadrantLongPress(quadrant: Quadrant, handler: QuadrantHandler): void {
     this.quadrantLongPressHandlers.set(quadrant, handler);
-    quadrantGestures.onQuadrantLongPress(quadrant, () => {
-      void evolis.record('guardian_hub', 'QUADRANT_LONG_PRESS', quadrant);
-      handler(quadrant);
-    });
+    try {
+      quadrantGestures.onQuadrantLongPress(quadrant, () => {
+        safeEvolisRecord('guardian_hub', 'QUADRANT_LONG_PRESS', quadrant);
+        handler(quadrant);
+      });
+    } catch (err) {
+      console.warn('[SentraGuardianHub] Error registrando long press:', err);
+    }
   }
 
   private announceCritical(message: string): void {
-    this.accessibility.announcePriority(message, 'critical');
+    try {
+      if (this.accessibility && typeof (this.accessibility as any).announcePriority === 'function') {
+        (this.accessibility as any).announcePriority(message, 'critical');
+      }
+    } catch (_) {
+      /* noop */
+    }
   }
 
   private announceNormal(message: string): void {
-    this.accessibility.announcePriority(message, 'normal');
+    try {
+      if (this.accessibility && typeof (this.accessibility as any).announcePriority === 'function') {
+        (this.accessibility as any).announcePriority(message, 'normal');
+      }
+    } catch (_) {
+      /* noop */
+    }
   }
 
   private notify(): void {
     const state = this.getState();
-    for (const listener of this.listeners) listener(state);
+    for (const listener of this.listeners) {
+      try {
+        listener(state);
+      } catch (err) {
+        console.warn('[SentraGuardianHub] Error en listener:', err);
+      }
+    }
   }
 
   dispose(): void {
     if (this.sentinelReleaseTimer) {
-      clearTimeout(this.sentinelReleaseTimer);
+      safeClearTimeout(this.sentinelReleaseTimer);
       this.sentinelReleaseTimer = null;
     }
-    quadrantGestures.dispose();
+    try {
+      if (quadrantGestures && typeof (quadrantGestures as any).dispose === 'function') {
+        (quadrantGestures as any).dispose();
+      }
+    } catch (_) {
+      /* noop */
+    }
     this.listeners.clear();
     this.quadrantTapHandlers.clear();
     this.quadrantLongPressHandlers.clear();
@@ -250,3 +405,4 @@ class SentraGuardianHub {
 }
 
 export const sentraGuardianHub = new SentraGuardianHub();
+export default sentraGuardianHub;
