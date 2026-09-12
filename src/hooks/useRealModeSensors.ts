@@ -25,7 +25,7 @@ type CocoSsdModel = {
 export function useRealModeSensors(
   videoRef: React.RefObject<HTMLVideoElement>,
   active: boolean,
-  intervalMs: number = 5000
+  intervalMs: number = 3000
 ): RealModeSensorsState {
   const [state, setState] = useState<RealModeSensorsState>({
     loading: true, error: null, detections: [], perception: null, lastEval: null,

@@ -4,36 +4,39 @@ import { deviceManager } from '../core/DeviceManager';
 import { voiceManager } from '../services/VoiceManager';
 import { PerceptionData } from '../core/PerceptionEngine';
 import { TCREIResponse } from '../core/TCREIBridge';
+import SentraVisionAccessibility from '../modules/SentraVisionAccessibility';
+
+const accessibility = new SentraVisionAccessibility({ minConfidence: 0.5 });
 
 interface BlindVisionPanelProps {
   processCommand: (command: string, perception?: PerceptionData) => Promise<void>;
   lastResponse: TCREIResponse | null;
   voiceEnabled: boolean;
+  cameraActive: boolean;
+  onCameraToggle: (active: boolean) => void;
 }
 
 export function BlindVisionPanel({
-  processCommand, lastResponse, voiceEnabled,
+  processCommand, lastResponse, voiceEnabled, cameraActive, onCameraToggle,
 }: BlindVisionPanelProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [cameraActive, setCameraActive] = useState(false);
   const [described, setDescribed] = useState(false);
   const { loading, error, detections, perception } = useRealModeSensors(
-    videoRef, cameraActive, 5000
+    videoRef, cameraActive, 3000
   );
 
   useEffect(() => {
     if (!cameraActive || detections.length === 0 || described) return;
-    const summary = detections
-      .slice(0, 5)
-      .map((d) => `${d.class} ${Math.round(d.score * 100)}%`)
-      .join(', ');
-    const text = `Detecto: ${summary}. Modo offline activo.`;
-    if (voiceEnabled) voiceManager.speak(text, 3);
-    deviceManager.vibrate(100);
+    accessibility.processDetections(
+      detections.slice(0, 5).map((d) => ({
+        label: d.class,
+        confidence: d.score,
+      }))
+    );
     setDescribed(true);
-    const reset = setTimeout(() => setDescribed(false), 8000);
+    const reset = setTimeout(() => setDescribed(false), 3000);
     return () => clearTimeout(reset);
-  }, [detections, cameraActive, described, voiceEnabled]);
+  }, [detections, cameraActive, described]);
 
   const handleDescribe = () => {
     if (detections.length === 0) {
@@ -51,7 +54,7 @@ export function BlindVisionPanel({
   };
 
   const handleToggleCamera = () => {
-    setCameraActive((prev) => !prev);
+    onCameraToggle(!cameraActive);
     deviceManager.vibrate(80);
     voiceManager.speak(cameraActive ? 'Cámara desactivada' : 'Cámara activada', 2);
   };

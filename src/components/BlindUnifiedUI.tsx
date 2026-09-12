@@ -19,6 +19,7 @@ export function BlindUnifiedUI() {
     guardianStatus, isBacterialGuardianActive,
     activateGuardian, deactivateGuardian,
     getEvidence, exportData, toggleHumanVeto,
+    cameraActive, toggleCamera,
   } = useApp();
 
   const [orbState, setOrbState] = useState<OrbState>('idle');
@@ -191,6 +192,8 @@ export function BlindUnifiedUI() {
             processCommand={processCommand}
             lastResponse={lastResponse}
             voiceEnabled={voiceEnabled}
+            cameraActive={cameraActive}
+            onCameraToggle={toggleCamera}
           />
         ) : (
           <BlindSentinelPanel

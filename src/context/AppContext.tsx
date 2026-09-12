@@ -56,6 +56,8 @@ export interface AppState {
   fieldLogEntries: FieldLogEntry[];
   buildStatus: BuildStatus;
   currentBuild: BuildResult | null;
+  cameraActive: boolean;
+  sensorsConnected: boolean;
 }
 
 interface AppContextValue extends AppState {
@@ -86,6 +88,8 @@ interface AppContextValue extends AppState {
   exportFieldLog: () => Promise<void>;
   triggerBuild: (type: BuildType) => Promise<void>;
   optimizeBuildForLowEnd: () => void;
+  toggleCamera: (active?: boolean) => void;
+  setSensorsConnected: (connected: boolean) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -115,6 +119,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch { /* localStorage unavailable */ }
     bioSoftware.setEnabled(savedBio);
 
+    let savedCamera = false;
+    try {
+      savedCamera = localStorage.getItem('sentra_camera_active') === 'true';
+    } catch { /* localStorage unavailable */ }
+
     return {
       activeModule: 'vision', voiceEnabled: true, humanVeto: false,
       powerMode: 'normal', syncTransport: 'offline',
@@ -131,6 +140,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       fieldLogEntries: [],
       buildStatus: 'idle',
       currentBuild: null,
+      cameraActive: savedCamera,
+      sensorsConnected: false,
     };
   });
 
@@ -406,6 +417,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     buildPipelineManager.optimizeForLowEnd();
   }, []);
 
+  const toggleCamera = useCallback((active?: boolean) => {
+    setState((s) => {
+      const next = active ?? !s.cameraActive;
+      try { localStorage.setItem('sentra_camera_active', String(next)); } catch { /* localStorage unavailable */ }
+      return { ...s, cameraActive: next };
+    });
+  }, []);
+
+  const setSensorsConnected = useCallback((connected: boolean) => {
+    setState((s) => ({ ...s, sensorsConnected: connected }));
+  }, []);
+
   const value: AppContextValue = {
     ...state, setModule, toggleVoice, toggleHumanVeto,
     setPowerMode, setSyncTransport, processCommand, setGeminiRemote,
@@ -418,6 +441,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCognitiveMode, resetCognitiveLoad,
     addFieldMarker, exportFieldLog,
     triggerBuild, optimizeBuildForLowEnd,
+    toggleCamera, setSensorsConnected,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
