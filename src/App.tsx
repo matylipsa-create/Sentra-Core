@@ -9,6 +9,7 @@ import { createSimulatedSensors } from "./sensors/SimulatedSensors";
 import { createNativeSensors } from "./services/NativeSensorService";
 import { createGPSSensor } from "./services/GPSSensorService";
 import { sentraGuardianHub } from "./core/SentraGuardianHub";
+import { BlindTactileQuadrants } from "./components/BlindTactileQuadrants";
 
 export default function App() {
   useEffect(() => {
@@ -42,5 +43,34 @@ export default function App() {
     };
   }, []);
 
-  return <main className="sentra-app-shell"><AccessibleSensorUI /><SensorDashboard /></main>;
+  const handleQuadrantAction = (action: string, quadrant: string) => {
+    switch (action) {
+      case 'TOGGLE_EYES_MODE':
+      case 'DESCRIBE_NOW':
+        sentraGuardianHub.requestDescription();
+        break;
+      case 'SENTINEL_STATUS': {
+        const state = sentraGuardianHub.getState();
+        sentraGuardianHub.onSentinelEvent({
+          severity: 'low',
+          message: state.sentinelAlertActive
+            ? 'Guardian en alerta. Perimetro comprometido.'
+            : 'Perimetro seguro. Sin alertas.',
+          source: 'quadrant',
+        });
+        break;
+      }
+      case 'PANIC_OR_PERIMETER':
+        sentraGuardianHub.silenceAll();
+        break;
+    }
+  };
+
+  return (
+    <main className="sentra-app-shell">
+      <AccessibleSensorUI />
+      <SensorDashboard />
+      <BlindTactileQuadrants onAction={handleQuadrantAction} />
+    </main>
+  );
 }
