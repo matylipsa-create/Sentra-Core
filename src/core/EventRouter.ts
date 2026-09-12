@@ -1,14 +1,21 @@
 /**
- * EventRouter — Router de eventos interno.
+ * EventRouter — Router y dispatcher de eventos interno.
  *
- * Enruta eventos segun contexto, intensidad y evaluacion moral.
- * Reemplaza los nodos Filter y Switch de n8n.
+ * Enruta eventos segun contexto, intensidad y evaluacion moral,
+ * y ejecuta acciones nativas (voz, vibracion, registro EVOLIS, alertas).
+ * Reemplaza los nodos Filter, Switch y Action de n8n.
  */
 
 import { moralNode } from './MoralNode';
 import { ternaryEthics, tritToValue, Trit } from './TernaryMath';
+import { voiceManager } from '../services/VoiceManager';
+import { deviceManager } from './DeviceManager';
+import { evolis } from './EVOLIS';
+import { offlineLogger } from './OfflineLogger';
 
 export type RouteActionType = 'voice' | 'vibrate' | 'evolis_record' | 'alert' | 'log' | 'block';
+
+export type ActionType = 'voice' | 'vibrate' | 'evolis_record' | 'alert' | 'log';
 
 export interface RouteDecision {
   actionType: RouteActionType;
@@ -30,6 +37,16 @@ export interface RoutableEvent {
   timestamp: number;
 }
 
+export interface DispatchAction {
+  type: ActionType;
+  level: 'info' | 'warning' | 'critical';
+  message: string;
+  category: string;
+  data?: Record<string, unknown>;
+}
+
+type ActionListener = (action: DispatchAction) => void;
+
 const CATEGORY_ACTION_MAP: Record<string, RouteActionType> = {
   ambient: 'log',
   motion: 'alert',
@@ -43,6 +60,12 @@ const CATEGORY_ACTION_MAP: Record<string, RouteActionType> = {
 };
 
 class EventRouter {
+  private actionListeners = new Set<ActionListener>();
+  private actionLog: DispatchAction[] = [];
+  private readonly maxActionLog = 200;
+
+  // ── Routing ────────────────────────────────────────────────────────────
+
   route(event: RoutableEvent): RouteDecision {
     const moralEval = moralNode.evaluate(event.message);
     const intensity = this.evaluateIntensity(event);
@@ -127,6 +150,8 @@ class EventRouter {
     return 3;
   }
 
+  // ── Priority cooldowns ─────────────────────────────────────────────────
+
   private _priorityCooldowns: Record<string, number> = {
     CRITICAL: 500,
     NAVIGATION: 1500,
@@ -151,6 +176,102 @@ class EventRouter {
     this._lastEventTime[level] = now;
     handler();
     return true;
+  }
+
+  // ── Dispatch (merged from ActionDispatcher) ────────────────────────────
+
+  dispatch(action: DispatchAction): void {
+    this.actionLog.unshift(action);
+    if (this.actionLog.length > this.maxActionLog) this.actionLog.pop();
+
+    switch (action.type) {
+      case 'voice':
+        this.doVoice(action);
+        break;
+      case 'vibrate':
+        this.doVibrate(action);
+        break;
+      case 'evolis_record':
+        void this.doEvolisRecord(action);
+        break;
+      case 'alert':
+        this.doAlert(action);
+        break;
+      case 'log':
+        this.doLog(action);
+        break;
+    }
+
+    for (const listener of this.actionListeners) listener(action);
+  }
+
+  sendAlert(level: DispatchAction['level'], message: string): void {
+    this.dispatch({
+      type: 'alert',
+      level,
+      message,
+      category: 'system',
+    });
+  }
+
+  logEvent(event: { type: string; message: string; data?: unknown }): void {
+    this.dispatch({
+      type: 'log',
+      level: 'info',
+      message: event.message,
+      category: event.type,
+      data: event.data as Record<string, unknown> | undefined,
+    });
+  }
+
+  getActionLog(): DispatchAction[] {
+    return [...this.actionLog];
+  }
+
+  subscribeActions(listener: ActionListener): () => void {
+    this.actionListeners.add(listener);
+    return () => this.actionListeners.delete(listener);
+  }
+
+  private doVoice(action: DispatchAction): void {
+    const priority = action.level === 'critical' ? 1 : action.level === 'warning' ? 2 : 3;
+    voiceManager.speak(action.message, priority);
+  }
+
+  private doVibrate(action: DispatchAction): void {
+    const pattern: number | number[] = action.level === 'critical'
+      ? [200, 100, 200, 100, 200]
+      : action.level === 'warning'
+        ? [100, 50, 100]
+        : 80;
+    deviceManager.vibrate(pattern);
+  }
+
+  private async doEvolisRecord(action: DispatchAction): Promise<void> {
+    await evolis.record('dispatcher', action.type, JSON.stringify({
+      category: action.category,
+      message: action.message,
+      level: action.level,
+    }));
+  }
+
+  private doAlert(action: DispatchAction): void {
+    offlineLogger.log({
+      type: 'alert',
+      message: action.message,
+      level: action.level,
+    });
+    if (action.level === 'critical' || action.level === 'warning') {
+      deviceManager.vibrate(action.level === 'critical' ? [200, 100, 200] : 100);
+    }
+  }
+
+  private doLog(action: DispatchAction): void {
+    offlineLogger.log({
+      type: action.category,
+      message: action.message,
+      data: action.data,
+    });
   }
 }
 
