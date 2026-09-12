@@ -1,20 +1,17 @@
 import { useEffect } from "react";
-import { SensorDashboard } from "./components/SensorDashboard";
-import { AccessibleSensorUI } from "./components/AccessibleSensorUI";
-import { deviceSensorManager } from "./core/DeviceSensorManager";
-import { sensorHub } from "./core/SensorHub";
-import { perceptionEngine } from "./core/PerceptionEngine";
-import { sensorModule } from "./modules/SensorModule";
-import { createSimulatedSensors } from "./sensors/SimulatedSensors";
-import { createNativeSensors } from "./services/NativeSensorService";
-import { createGPSSensor } from "./services/GPSSensorService";
-import { sentraGuardianHub } from "./core/SentraGuardianHub";
-import { BlindTactileQuadrants } from "./components/BlindTactileQuadrants";
+import { SensorDashboard } from "./SensorDashboard";
+import { AccessibleSensorUI } from "./AccessibleSensorUI";
+import { sensorHub } from "../core/SensorHub";
+import { perceptionEngine } from "../core/PerceptionEngine";
+import { sensorModule } from "../modules/SensorModule";
+import { createSimulatedSensors } from "../sensors/SimulatedSensors";
+import { createNativeSensors } from "../services/NativeSensorService";
+import { createGPSSensor } from "../services/GPSSensorService";
+import { sentraGuardianHub } from "../core/SentraGuardianHub";
+import { BlindTactileQuadrants } from "./BlindTactileQuadrants";
 
-export default function App() {
+export function BlindUnifiedUI() {
   useEffect(() => {
-    deviceSensorManager.detectAvailableSensors();
-
     // Wiring multimodal: conecta hub → governor, router, accessibility, voice
     sentraGuardianHub.initMultimodal();
 
@@ -74,3 +71,5 @@ export default function App() {
     </main>
   );
 }
+
+export default BlindUnifiedUI;
