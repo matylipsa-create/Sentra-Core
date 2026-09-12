@@ -1,100 +1,127 @@
 /**
- * QuadrantGestures — Lógica de los 4 cuadrantes táctiles ciegos.
- *
- * TOP_LEFT: Modo ojos — conmutar lectura de bus/objetos
- * TOP_RIGHT: Descripción instantánea
- * BOTTOM_LEFT: Estado Sentinel
- * BOTTOM_RIGHT: Fijar perímetro / Pánico / Silenciar todo (long press)
- *
- * Sin UI visible: solo lógica. El componente BlindTactileQuadrants
- * usa estas funciones para despachar gestos.
+ * QuadrantGestures
+ * Lógica de los 4 cuadrantes táctiles ciegos.
+ * Sin UI visible: solo detección de toques y gestos por zona.
  */
 
-export type QuadrantId = 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT';
+export type Quadrant = 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT';
 
-export interface QuadrantConfig {
-  id: QuadrantId;
-  label: string;
-  ariaLabel: string;
+export type QuadrantAction =
+  | 'TOGGLE_EYES_MODE'      // TOP_LEFT
+  | 'DESCRIBE_NOW'          // TOP_RIGHT
+  | 'SENTINEL_STATUS'       // BOTTOM_LEFT
+  | 'PANIC_OR_PERIMETER';   // BOTTOM_RIGHT
+
+interface QuadrantConfig {
+  tapMaxDurationMs: number;
+  longPressMinDurationMs: number;
+  onAction?: (action: QuadrantAction, quadrant: Quadrant) => void;
 }
 
-export const QUADRANT_CONFIGS: QuadrantConfig[] = [
-  {
-    id: 'TOP_LEFT',
-    label: 'Modo ojos',
-    ariaLabel: 'Modo ojos. Toque para conmutar entre lectura de colectivos y detección de objetos.',
-  },
-  {
-    id: 'TOP_RIGHT',
-    label: 'Descripción instantánea',
-    ariaLabel: 'Descripción instantánea. Toque para describir lo que hay enfrente.',
-  },
-  {
-    id: 'BOTTOM_LEFT',
-    label: 'Estado Sentinel',
-    ariaLabel: 'Estado del guardián perimetral. Toque para reporte de seguridad.',
-  },
-  {
-    id: 'BOTTOM_RIGHT',
-    label: 'Fijar perímetro / Pánico',
-    ariaLabel: 'Fijar perímetro o botón de pánico. Toque largo para silenciar todo.',
-  },
-];
+class QuadrantGestures {
+  private config: QuadrantConfig;
+  private listeners: Map<Quadrant, { tap: Array<() => void>; longPress: Array<() => void> }> =
+    new Map();
 
-type TapCallback = (quadrant: QuadrantId) => void;
-type LongPressCallback = (quadrant: QuadrantId) => void;
-
-const LONG_PRESS_MS = 800;
-
-class QuadrantGestureManager {
-  private tapCallbacks = new Map<QuadrantId, TapCallback>();
-  private longPressCallbacks = new Map<QuadrantId, LongPressCallback>();
-  private timers = new Map<QuadrantId, number>();
-
-  onQuadrantTap(quadrant: QuadrantId, cb: TapCallback): void {
-    this.tapCallbacks.set(quadrant, cb);
+  constructor(config: Partial<QuadrantConfig> = {}) {
+    this.config = {
+      tapMaxDurationMs: config.tapMaxDurationMs ?? 250,
+      longPressMinDurationMs: config.longPressMinDurationMs ?? 600,
+      onAction: config.onAction,
+    };
   }
 
-  onQuadrantLongPress(quadrant: QuadrantId, cb: LongPressCallback): void {
-    this.longPressCallbacks.set(quadrant, cb);
-  }
-
-  handleTouchStart(quadrant: QuadrantId): void {
-    const longPressCb = this.longPressCallbacks.get(quadrant);
-    if (longPressCb) {
-      const timer = window.setTimeout(() => {
-        longPressCb(quadrant);
-        this.timers.delete(quadrant);
-      }, LONG_PRESS_MS);
-      this.timers.set(quadrant, timer);
+  /**
+   * Retorna la acción asociada a un cuadrante.
+   */
+  public static getActionForQuadrant(q: Quadrant): QuadrantAction {
+    switch (q) {
+      case 'TOP_LEFT':
+        return 'TOGGLE_EYES_MODE';
+      case 'TOP_RIGHT':
+        return 'DESCRIBE_NOW';
+      case 'BOTTOM_LEFT':
+        return 'SENTINEL_STATUS';
+      case 'BOTTOM_RIGHT':
+        return 'PANIC_OR_PERIMETER';
+      default:
+        return 'TOGGLE_EYES_MODE';
     }
   }
 
-  handleTouchEnd(quadrant: QuadrantId): void {
-    const timer = this.timers.get(quadrant);
-    if (timer) {
-      clearTimeout(timer);
-      this.timers.delete(quadrant);
-      return;
-    }
-    const tapCb = this.tapCallbacks.get(quadrant);
-    if (tapCb) tapCb(quadrant);
+  /**
+   * Registra un callback para tap en un cuadrante.
+   */
+  public onQuadrantTap(quadrant: Quadrant, cb: () => void): () => void {
+    this.ensureBucket(quadrant);
+    this.listeners.get(quadrant)!.tap.push(cb);
+    return () => {
+      const bucket = this.listeners.get(quadrant);
+      if (!bucket) return;
+      bucket.tap = bucket.tap.filter((fn) => fn !== cb);
+    };
   }
 
-  handleTouchCancel(quadrant: QuadrantId): void {
-    const timer = this.timers.get(quadrant);
-    if (timer) {
-      clearTimeout(timer);
-      this.timers.delete(quadrant);
+  /**
+   * Registra un callback para long press en un cuadrante.
+   */
+  public onQuadrantLongPress(quadrant: Quadrant, cb: () => void): () => void {
+    this.ensureBucket(quadrant);
+    this.listeners.get(quadrant)!.longPress.push(cb);
+    return () => {
+      const bucket = this.listeners.get(quadrant);
+      if (!bucket) return;
+      bucket.longPress = bucket.longPress.filter((fn) => fn !== cb);
+    };
+  }
+
+  /**
+   * Procesa un gesto completo (llamado desde el componente táctil).
+   */
+  public handleGesture(quadrant: Quadrant, durationMs: number): void {
+    const action = QuadrantGestures.getActionForQuadrant(quadrant);
+
+    if (durationMs >= this.config.longPressMinDurationMs) {
+      this.emitLongPress(quadrant);
+    } else if (durationMs <= this.config.tapMaxDurationMs) {
+      this.emitTap(quadrant);
+    }
+
+    if (this.config.onAction) {
+      this.config.onAction(action, quadrant);
     }
   }
 
-  clearAll(): void {
-    for (const timer of this.timers.values()) clearTimeout(timer);
-    this.timers.clear();
-    this.tapCallbacks.clear();
-    this.longPressCallbacks.clear();
+  private emitTap(quadrant: Quadrant): void {
+    const bucket = this.listeners.get(quadrant);
+    if (!bucket) return;
+    bucket.tap.forEach((fn) => {
+      try {
+        fn();
+      } catch (err) {
+        console.warn('[QuadrantGestures] Error en tap:', err);
+      }
+    });
+  }
+
+  private emitLongPress(quadrant: Quadrant): void {
+    const bucket = this.listeners.get(quadrant);
+    if (!bucket) return;
+    bucket.longPress.forEach((fn) => {
+      try {
+        fn();
+      } catch (err) {
+        console.warn('[QuadrantGestures] Error en longPress:', err);
+      }
+    });
+  }
+
+  private ensureBucket(quadrant: Quadrant): void {
+    if (!this.listeners.has(quadrant)) {
+      this.listeners.set(quadrant, { tap: [], longPress: [] });
+    }
   }
 }
 
-export const quadrantGestures = new QuadrantGestureManager();
+export const quadrantGestures = new QuadrantGestures();
+export default QuadrantGestures;
