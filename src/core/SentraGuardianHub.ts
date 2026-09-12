@@ -5,15 +5,21 @@
  *   CRÍTICO (Sentinel) > NAVEGACIÓN (Visión) > DESCRIPTIVO (TTS a demanda)
  *
  * Sentinel interrumpe Visión de forma determinista con cooldown de 5s.
- * Audio 3D binaural real vía SpatialAudioEngine. Haptics vía HapticPatterns.
+ * Audio 3D binaural real vía SpatialAudioEngine. Haptics vía DeviceManager.
  * TTS unificado vía SentraVisionAccessibility.announcePriority.
+ * Prioridad delegada a ContextGovernor (sin estado duplicado).
  */
 
 import { priorityQueue, type PriorityLevel } from './PriorityQueue';
 import { spatialAudioEngine } from './SpatialAudioEngine';
-import { vibrate } from './HapticPatterns';
+import { deviceManager } from './DeviceManager';
 import { quadrantGestures, type Quadrant } from './QuadrantGestures';
 import { evolis } from './EVOLIS';
+import { contextGovernor } from './ContextGovernor';
+import { bacterialGuardian } from './BacterialGuardian';
+import { eventRouter } from './EventRouter';
+import { voiceManager } from '../services/VoiceManager';
+import SentraVisionAccessibility from '../modules/SentraVisionAccessibility';
 
 export interface VisionDetectionInput {
   label: string;
@@ -39,20 +45,18 @@ export interface HubState {
 type HubListener = (state: HubState) => void;
 type QuadrantHandler = (quadrant: Quadrant) => void;
 
+type GovernorLevel = 'CRITICAL' | 'NAVIGATION' | 'DESCRIPTIVE';
+
 const SENTINEL_RELEASE_MS = 5000;
 
-declare global {
-  interface Window {
-    __sentraAccessibility?: {
-      announcePriority: (text: string, priority: 'critical' | 'normal' | 'low') => void;
-      processDetections: (detections: { label: string; confidence: number }[]) => void;
-    };
-  }
+function fromGovernorLevel(level: GovernorLevel): PriorityLevel {
+  if (level === 'CRITICAL') return 'critical';
+  if (level === 'NAVIGATION') return 'navigation';
+  return 'descriptive';
 }
 
 class SentraGuardianHub {
   private sentinelAlertActive = false;
-  private currentPriorityLevel: PriorityLevel = 'descriptive';
   private lastSentinelEvent: SentinelEventInput | null = null;
   private lastVisionDetection: VisionDetectionInput | null = null;
   private spatialAudioEnabled = true;
@@ -60,11 +64,13 @@ class SentraGuardianHub {
   private sentinelReleaseTimer: number | null = null;
   private quadrantTapHandlers = new Map<Quadrant, QuadrantHandler>();
   private quadrantLongPressHandlers = new Map<Quadrant, QuadrantHandler>();
+  private _multimodalInitialized = false;
+  private accessibility = new SentraVisionAccessibility({ minConfidence: 0.5 });
 
   getState(): HubState {
     return {
       sentinelAlertActive: this.sentinelAlertActive,
-      currentPriorityLevel: this.currentPriorityLevel,
+      currentPriorityLevel: fromGovernorLevel(contextGovernor.getPriorityLevel()),
       lastSentinelEvent: this.lastSentinelEvent,
       lastVisionDetection: this.lastVisionDetection,
       spatialAudioEnabled: this.spatialAudioEnabled,
@@ -88,6 +94,22 @@ class SentraGuardianHub {
     }
   }
 
+  initMultimodal(): void {
+    if (this._multimodalInitialized) return;
+
+    bacterialGuardian.setContextGovernor(contextGovernor);
+    eventRouter.setContextGovernor(contextGovernor);
+    this.accessibility.setVoiceManager(voiceManager);
+
+    if (typeof window !== 'undefined') {
+      (window as unknown as { __sentraAccessibility?: SentraVisionAccessibility }).__sentraAccessibility =
+        this.accessibility;
+    }
+
+    this._multimodalInitialized = true;
+    console.log('[SentraGuardianHub] Multimodal wiring completado.');
+  }
+
   onVisionDetection(detection: VisionDetectionInput): void {
     if (this.sentinelAlertActive) {
       void evolis.record('guardian_hub', 'vision_blocked_by_sentinel', detection.label);
@@ -95,7 +117,7 @@ class SentraGuardianHub {
     }
 
     this.lastVisionDetection = detection;
-    this.currentPriorityLevel = 'navigation';
+    contextGovernor.setPriorityLevel('NAVIGATION');
 
     priorityQueue.enqueue({
       level: 'navigation',
@@ -116,13 +138,13 @@ class SentraGuardianHub {
 
     if (event.severity === 'high' || event.severity === 'critical') {
       this.sentinelAlertActive = true;
-      this.currentPriorityLevel = 'critical';
+      contextGovernor.setPriorityLevel('CRITICAL');
 
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
 
-      vibrate('SENTINEL_ALERT');
+      deviceManager.vibratePattern('SENTINEL_ALERT');
 
       this.announceCritical(event.message);
 
@@ -142,13 +164,13 @@ class SentraGuardianHub {
       if (this.sentinelReleaseTimer) clearTimeout(this.sentinelReleaseTimer);
       this.sentinelReleaseTimer = window.setTimeout(() => {
         this.sentinelAlertActive = false;
-        this.currentPriorityLevel = 'descriptive';
+        contextGovernor.setPriorityLevel('DESCRIPTIVE');
         this.sentinelReleaseTimer = null;
         void evolis.record('guardian_hub', 'PRIORITY_CHANGE', 'sentinel_released');
         this.notify();
       }, SENTINEL_RELEASE_MS);
     } else if (event.severity === 'medium') {
-      vibrate('WARNING');
+      deviceManager.vibratePattern('WARNING');
       this.announceNormal(event.message);
       priorityQueue.enqueue({
         level: 'critical',
@@ -165,7 +187,7 @@ class SentraGuardianHub {
 
   requestDescription(): void {
     if (this.sentinelAlertActive) return;
-    this.currentPriorityLevel = 'descriptive';
+    contextGovernor.setPriorityLevel('DESCRIPTIVE');
     this.notify();
   }
 
@@ -175,7 +197,7 @@ class SentraGuardianHub {
     }
     spatialAudioEngine.stopAll();
     this.sentinelAlertActive = false;
-    this.currentPriorityLevel = 'descriptive';
+    contextGovernor.setPriorityLevel('DESCRIPTIVE');
     if (this.sentinelReleaseTimer) {
       clearTimeout(this.sentinelReleaseTimer);
       this.sentinelReleaseTimer = null;
@@ -188,7 +210,7 @@ class SentraGuardianHub {
     this.quadrantTapHandlers.set(quadrant, handler);
     quadrantGestures.onQuadrantTap(quadrant, () => {
       this.initSpatialAudio();
-      vibrate('QUADRANT_TAP');
+      deviceManager.vibratePattern('QUADRANT_TAP');
       void evolis.record('guardian_hub', 'QUADRANT_TAP', quadrant);
       handler(quadrant);
     });
@@ -203,15 +225,11 @@ class SentraGuardianHub {
   }
 
   private announceCritical(message: string): void {
-    if (window.__sentraAccessibility?.announcePriority) {
-      window.__sentraAccessibility.announcePriority(message, 'critical');
-    }
+    this.accessibility.announcePriority(message, 'critical');
   }
 
   private announceNormal(message: string): void {
-    if (window.__sentraAccessibility?.announcePriority) {
-      window.__sentraAccessibility.announcePriority(message, 'normal');
-    }
+    this.accessibility.announcePriority(message, 'normal');
   }
 
   private notify(): void {
