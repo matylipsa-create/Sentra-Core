@@ -90,6 +90,14 @@ interface AppContextValue extends AppState {
   optimizeBuildForLowEnd: () => void;
   toggleCamera: (active?: boolean) => void;
   setSensorsConnected: (connected: boolean) => void;
+  priorityLevel: 'CRITICAL' | 'NAVIGATION' | 'DESCRIPTIVE';
+  setPriorityLevel: (level: 'CRITICAL' | 'NAVIGATION' | 'DESCRIPTIVE') => void;
+  sentinelAlertActive: boolean;
+  setSentinelAlertActive: (active: boolean) => void;
+  spatialAudioEnabled: boolean;
+  setSpatialAudioEnabled: (enabled: boolean) => void;
+  perimeterConfig: { cameras: string[]; zones: Array<{ name: string; active: boolean }> };
+  setPerimeterConfig: (config: { cameras: string[]; zones: Array<{ name: string; active: boolean }> }) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -429,6 +437,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, sensorsConnected: connected }));
   }, []);
 
+  const [priorityLevel, setPriorityLevel] = useState<'CRITICAL' | 'NAVIGATION' | 'DESCRIPTIVE'>('NAVIGATION');
+  const [sentinelAlertActive, setSentinelAlertActive] = useState<boolean>(false);
+  const [spatialAudioEnabled, setSpatialAudioEnabled] = useState<boolean>(true);
+  const [perimeterConfig, setPerimeterConfig] = useState<{
+    cameras: string[];
+    zones: Array<{ name: string; active: boolean }>;
+  }>({ cameras: [], zones: [] });
+
+  useEffect(() => {
+    const saved = localStorage.getItem('sentra:priority-state');
+    if (saved) {
+      try {
+        const p = JSON.parse(saved);
+        if (p.priorityLevel) setPriorityLevel(p.priorityLevel);
+        if (typeof p.sentinelAlertActive === 'boolean') setSentinelAlertActive(p.sentinelAlertActive);
+        if (typeof p.spatialAudioEnabled === 'boolean') setSpatialAudioEnabled(p.spatialAudioEnabled);
+        if (p.perimeterConfig) setPerimeterConfig(p.perimeterConfig);
+      } catch { /* parse error */ }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      'sentra:priority-state',
+      JSON.stringify({ priorityLevel, sentinelAlertActive, spatialAudioEnabled, perimeterConfig })
+    );
+  }, [priorityLevel, sentinelAlertActive, spatialAudioEnabled, perimeterConfig]);
+
   const value: AppContextValue = {
     ...state, setModule, toggleVoice, toggleHumanVeto,
     setPowerMode, setSyncTransport, processCommand, setGeminiRemote,
@@ -442,6 +478,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addFieldMarker, exportFieldLog,
     triggerBuild, optimizeBuildForLowEnd,
     toggleCamera, setSensorsConnected,
+    priorityLevel, setPriorityLevel,
+    sentinelAlertActive, setSentinelAlertActive,
+    spatialAudioEnabled, setSpatialAudioEnabled,
+    perimeterConfig, setPerimeterConfig,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

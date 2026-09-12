@@ -89,6 +89,20 @@ class SentraVisionAccessibility {
       }
     }
   }
+
+  private _voiceManager: any = null;
+
+  public setVoiceManager(vm: any): void {
+    this._voiceManager = vm;
+  }
+
+  public announcePriority(text: string, priority: 'critical' | 'normal' | 'low' = 'normal'): void {
+    if (this._voiceManager?.speakPriority) {
+      this._voiceManager.speakPriority(text, priority);
+      return;
+    }
+    this.announce(text);
+  }
 }
 
 export default SentraVisionAccessibility;

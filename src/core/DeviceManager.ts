@@ -69,6 +69,30 @@ export class DeviceManager {
   vibrate(pattern: number | number[]): void {
     if ('vibrate' in navigator) navigator.vibrate(pattern);
   }
+
+  private _hapticPatterns: Record<string, number[]> = {
+    SENTINEL_ALERT: [400, 100, 400, 100, 800],
+    WARNING: [200, 100, 200],
+    NOTIFICATION: [100, 50, 100],
+    CONFIRM: [200],
+    QUADRANT_TAP: [50],
+  };
+
+  public vibratePattern(name: string): void {
+    if (typeof navigator === 'undefined' || !('vibrate' in navigator)) return;
+    const pattern = this._hapticPatterns[name];
+    if (!pattern) {
+      console.warn('[DeviceManager] Patrón desconocido:', name);
+      return;
+    }
+    try {
+      navigator.vibrate(pattern);
+    } catch { /* vibrate not supported */ }
+  }
+
+  public registerHapticPattern(name: string, pattern: number[]): void {
+    this._hapticPatterns[name] = pattern;
+  }
 }
 
 export const deviceManager = new DeviceManager();

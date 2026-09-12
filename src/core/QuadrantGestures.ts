@@ -121,6 +121,10 @@ class QuadrantGestures {
       this.listeners.set(quadrant, { tap: [], longPress: [] });
     }
   }
+
+  public dispose(): void {
+    this.listeners.clear();
+  }
 }
 
 export const quadrantGestures = new QuadrantGestures();

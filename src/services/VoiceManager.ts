@@ -207,6 +207,23 @@ export class VoiceManager {
     if (!this.synth) return [];
     return this.synth.getVoices();
   }
+
+  public speakPriority(
+    text: string,
+    priority: 'critical' | 'normal' | 'low' = 'normal'
+  ): void {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const synth = window.speechSynthesis;
+    if (priority === 'critical') {
+      synth.cancel();
+    } else if (priority === 'low') {
+      if (synth.speaking) return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = priority === 'critical' ? 1.3 : 1.1;
+    utterance.pitch = priority === 'critical' ? 1.1 : 1.0;
+    synth.speak(utterance);
+  }
 }
 
 export const voiceManager = new VoiceManager();

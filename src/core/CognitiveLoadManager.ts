@@ -148,6 +148,35 @@ class CognitiveLoadManager {
       await storageService.saveState(STORE_KEY, this.state);
     } catch { /* storage unavailable */ }
   }
+
+  private _priorityEvents: Array<{ level: string; timestamp: number }> = [];
+
+  public recordPriorityEvent(level: 'CRITICAL' | 'NAVIGATION' | 'DESCRIPTIVE'): void {
+    const now = Date.now();
+    this._priorityEvents.push({ level, timestamp: now });
+    this._priorityEvents = this._priorityEvents.filter((e) => now - e.timestamp < 60000);
+  }
+
+  public getLoadLevel(): 'low' | 'medium' | 'high' {
+    const now = Date.now();
+    const recent = this._priorityEvents.filter((e) => now - e.timestamp < 60000);
+    const score =
+      recent.filter((e) => e.level === 'CRITICAL').length * 3 +
+      recent.filter((e) => e.level === 'NAVIGATION').length;
+    if (score >= 20) return 'high';
+    if (score >= 8) return 'medium';
+    return 'low';
+  }
+
+  public getPriorityBreakdown(): { critical: number; navigation: number; descriptive: number } {
+    const now = Date.now();
+    const recent = this._priorityEvents.filter((e) => now - e.timestamp < 60000);
+    return {
+      critical: recent.filter((e) => e.level === 'CRITICAL').length,
+      navigation: recent.filter((e) => e.level === 'NAVIGATION').length,
+      descriptive: recent.filter((e) => e.level === 'DESCRIPTIVE').length,
+    };
+  }
 }
 
 export const cognitiveLoadManager = new CognitiveLoadManager();

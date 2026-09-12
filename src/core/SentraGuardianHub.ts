@@ -12,7 +12,7 @@
 import { priorityQueue, type PriorityLevel } from './PriorityQueue';
 import { spatialAudioEngine } from './SpatialAudioEngine';
 import { vibrate } from './HapticPatterns';
-import { quadrantGestures, type QuadrantId } from './QuadrantGestures';
+import { quadrantGestures, type Quadrant } from './QuadrantGestures';
 import { evolis } from './EVOLIS';
 
 export interface VisionDetectionInput {
@@ -37,7 +37,7 @@ export interface HubState {
 }
 
 type HubListener = (state: HubState) => void;
-type QuadrantHandler = (quadrant: QuadrantId) => void;
+type QuadrantHandler = (quadrant: Quadrant) => void;
 
 const SENTINEL_RELEASE_MS = 5000;
 
@@ -58,8 +58,8 @@ class SentraGuardianHub {
   private spatialAudioEnabled = true;
   private listeners = new Set<HubListener>();
   private sentinelReleaseTimer: number | null = null;
-  private quadrantTapHandlers = new Map<QuadrantId, QuadrantHandler>();
-  private quadrantLongPressHandlers = new Map<QuadrantId, QuadrantHandler>();
+  private quadrantTapHandlers = new Map<Quadrant, QuadrantHandler>();
+  private quadrantLongPressHandlers = new Map<Quadrant, QuadrantHandler>();
 
   getState(): HubState {
     return {
@@ -184,21 +184,21 @@ class SentraGuardianHub {
     this.notify();
   }
 
-  registerQuadrantTap(quadrant: QuadrantId, handler: QuadrantHandler): void {
+  registerQuadrantTap(quadrant: Quadrant, handler: QuadrantHandler): void {
     this.quadrantTapHandlers.set(quadrant, handler);
-    quadrantGestures.onQuadrantTap(quadrant, (q) => {
+    quadrantGestures.onQuadrantTap(quadrant, () => {
       this.initSpatialAudio();
       vibrate('QUADRANT_TAP');
-      void evolis.record('guardian_hub', 'QUADRANT_TAP', q);
-      handler(q);
+      void evolis.record('guardian_hub', 'QUADRANT_TAP', quadrant);
+      handler(quadrant);
     });
   }
 
-  registerQuadrantLongPress(quadrant: QuadrantId, handler: QuadrantHandler): void {
+  registerQuadrantLongPress(quadrant: Quadrant, handler: QuadrantHandler): void {
     this.quadrantLongPressHandlers.set(quadrant, handler);
-    quadrantGestures.onQuadrantLongPress(quadrant, (q) => {
-      void evolis.record('guardian_hub', 'QUADRANT_LONG_PRESS', q);
-      handler(q);
+    quadrantGestures.onQuadrantLongPress(quadrant, () => {
+      void evolis.record('guardian_hub', 'QUADRANT_LONG_PRESS', quadrant);
+      handler(quadrant);
     });
   }
 
@@ -224,7 +224,7 @@ class SentraGuardianHub {
       clearTimeout(this.sentinelReleaseTimer);
       this.sentinelReleaseTimer = null;
     }
-    quadrantGestures.clearAll();
+    quadrantGestures.dispose();
     this.listeners.clear();
     this.quadrantTapHandlers.clear();
     this.quadrantLongPressHandlers.clear();

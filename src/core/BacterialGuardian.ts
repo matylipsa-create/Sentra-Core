@@ -270,6 +270,21 @@ export class BacterialGuardian {
     const status = this.getStatus();
     for (const cb of this.listeners) cb(status);
   }
+
+  private _contextGovernor: any = null;
+
+  public setContextGovernor(governor: any): void {
+    this._contextGovernor = governor;
+  }
+
+  public emitTernarySignal(signal: -1 | 0 | 1): void {
+    if (!this._contextGovernor) return;
+    if (signal === -1) {
+      this._contextGovernor.setPriorityLevel('CRITICAL');
+    } else if (signal === 1) {
+      this._contextGovernor.setPriorityLevel('NAVIGATION');
+    }
+  }
 }
 
 export const bacterialGuardian = new BacterialGuardian();

@@ -126,6 +126,32 @@ class EventRouter {
     if (intensity >= 0.5) return 2;
     return 3;
   }
+
+  private _priorityCooldowns: Record<string, number> = {
+    CRITICAL: 500,
+    NAVIGATION: 1500,
+    DESCRIPTIVE: 3000,
+  };
+  private _lastEventTime: Record<string, number> = {};
+  private _contextGovernor: any = null;
+
+  public setContextGovernor(g: any): void {
+    this._contextGovernor = g;
+  }
+
+  public routeWithPriority(
+    level: 'CRITICAL' | 'NAVIGATION' | 'DESCRIPTIVE',
+    handler: () => void
+  ): boolean {
+    const now = Date.now();
+    const cooldown = this._priorityCooldowns[level] || 1000;
+    const last = this._lastEventTime[level] || 0;
+    if (now - last < cooldown) return false;
+    if (level !== 'CRITICAL' && this._contextGovernor?.isCriticalActive?.()) return false;
+    this._lastEventTime[level] = now;
+    handler();
+    return true;
+  }
 }
 
 export const eventRouter = new EventRouter();

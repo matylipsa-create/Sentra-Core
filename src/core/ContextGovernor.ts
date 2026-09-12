@@ -176,6 +176,23 @@ export class ContextGovernor {
     if (/\b(detectar|ver|procesar|comando|evidencia|bio|seguridad)\b/i.test(sentence)) score += 0.5;
     return score;
   }
+
+  private _priorityLevel: 'CRITICAL' | 'NAVIGATION' | 'DESCRIPTIVE' = 'NAVIGATION';
+
+  public setPriorityLevel(level: 'CRITICAL' | 'NAVIGATION' | 'DESCRIPTIVE'): void {
+    this._priorityLevel = level;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sentra:priority-change', { detail: { level } }));
+    }
+  }
+
+  public getPriorityLevel(): 'CRITICAL' | 'NAVIGATION' | 'DESCRIPTIVE' {
+    return this._priorityLevel;
+  }
+
+  public isCriticalActive(): boolean {
+    return this._priorityLevel === 'CRITICAL';
+  }
 }
 
 export const contextGovernor = new ContextGovernor();

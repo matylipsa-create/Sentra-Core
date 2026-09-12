@@ -7,13 +7,10 @@
  * init() debe llamarse tras un gesto del usuario (políticas de autoplay).
  */
 
-type AudioListener = (enabled: boolean) => void;
-
 class SpatialAudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private panner: PannerNode | null = null;
-  private listener: AudioListener | null = null;
   private masterVolume = 0.7;
   private initialized = false;
   private activeOscillators: OscillatorNode[] = [];
@@ -155,10 +152,6 @@ class SpatialAudioEngine {
 
   getMasterVolume(): number {
     return this.masterVolume;
-  }
-
-  setListener(fn: AudioListener): void {
-    this.listener = fn;
   }
 
   dispose(): void {
