@@ -8,10 +8,14 @@ import { sensorModule } from "./modules/SensorModule";
 import { createSimulatedSensors } from "./sensors/SimulatedSensors";
 import { createNativeSensors } from "./services/NativeSensorService";
 import { createGPSSensor } from "./services/GPSSensorService";
+import { sentraGuardianHub } from "./core/SentraGuardianHub";
 
 export default function App() {
   useEffect(() => {
     deviceSensorManager.detectAvailableSensors();
+
+    // Wiring multimodal: conecta hub → governor, router, accessibility, voice
+    sentraGuardianHub.initMultimodal();
 
     // Sensores reales nativos (Accelerometer, Gyroscope, AmbientLight, GPS)
     for (const sensor of createNativeSensors()) {
