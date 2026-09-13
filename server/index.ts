@@ -14,7 +14,7 @@ import { bacterialGuardian } from '../src/core/BacterialGuardian.js';
 import { ternaryEthics, tritToValue } from '../src/core/TernaryMath.js';
 import { usbService } from '../src/services/USBService.js';
 import { PowerMode } from '../src/core/PowerManager.js';
-import { SyncTransport } from '../src/core/SyncManager.js';
+import { syncManager, SyncTransport } from '../src/core/SyncManager.js';
 import { storageService } from '../src/services/StorageService.js';
 
 const PORT = parseInt(process.env.SENTRA_PORT ?? '8080', 10);
@@ -353,13 +353,6 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
   }
 
   const route = segments.slice(1).join('/');
-  let body: Record<string, unknown> = {};
-  if (req.method === 'POST') {
-    const chunks: Buffer[] = [];
-    for await (const chunk of chunks.length > 0 ? [req] : [req]) {
-      // collect body
-    }
-  }
 
   const sendJson = (code: number, data: unknown) => {
     res.writeHead(code, { 'Content-Type': 'application/json' });
@@ -380,36 +373,44 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       });
       return;
     }
+
     if (route === 'modules' && req.method === 'GET') {
       sendJson(200, { modules: moduleManager.getAllModules() });
       return;
     }
+
     if (route === 'evidence' && req.method === 'GET') {
       const entries = evolis.getEntries();
       sendJson(200, { entries: entries.slice(-50).reverse(), total: entries.length });
       return;
     }
+
     if (route === 'evidence/verify' && req.method === 'POST') {
       const valid = await evolis.verify();
       sendJson(200, { valid });
       return;
     }
+
     if (route === 'bio/protocols' && req.method === 'GET') {
       sendJson(200, { protocols: bioSoftware.getProtocols() });
       return;
     }
+
     if (route === 'bio/state' && req.method === 'GET') {
       sendJson(200, bioSoftware.getState());
       return;
     }
+
     if (route === 'bio/stats' && req.method === 'GET') {
       sendJson(200, bioSoftware.getStats());
       return;
     }
+
     if (route === 'guardian/status' && req.method === 'GET') {
       sendJson(200, bacterialGuardian.getStatus());
       return;
     }
+
     if (route === 'usb/devices' && req.method === 'GET') {
       sendJson(200, {
         devices: usbService.getDevices().map((d) => {
@@ -419,9 +420,9 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       });
       return;
     }
+
     if (route === 'usb/block' && req.method === 'POST') {
-      const raw: string = await readBody(req);
-      body = JSON.parse(raw);
+      const body = JSON.parse(await readBody(req));
       const portId = body.portId as string;
       usbService.blockPort(portId, body.reason as string | undefined);
       await evolis.registerUSBEvent(`block:${portId}`);
@@ -429,9 +430,9 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       sendJson(200, { portId, status: usbService.getPortStatus(portId) });
       return;
     }
+
     if (route === 'usb/unblock' && req.method === 'POST') {
-      const raw: string = await readBody(req);
-      body = JSON.parse(raw);
+      const body = JSON.parse(await readBody(req));
       const portId = body.portId as string;
       usbService.unblockPort(portId);
       bacterialGuardian.vaccinatePort(portId);
@@ -440,9 +441,9 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       sendJson(200, { portId, status: usbService.getPortStatus(portId) });
       return;
     }
+
     if (route === 'usb/authenticate' && req.method === 'POST') {
-      const raw: string = await readBody(req);
-      body = JSON.parse(raw);
+      const body = JSON.parse(await readBody(req));
       const portId = body.portId as string;
       const ok = usbService.authenticateDevice(portId);
       if (!ok) bacterialGuardian.activateDefense(portId);
@@ -451,13 +452,14 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       sendJson(200, { portId, authenticated: ok, status: usbService.getPortStatus(portId) });
       return;
     }
+
     if (route === 'sync/status' && req.method === 'GET') {
       sendJson(200, syncManager.getStatus());
       return;
     }
+
     if (route === 'sync/transport' && req.method === 'POST') {
-      const raw: string = await readBody(req);
-      body = JSON.parse(raw);
+      const body = JSON.parse(await readBody(req));
       const transport = body.transport as SyncTransport;
       syncManager.setTransport(transport);
       state.syncTransport = transport;
@@ -465,19 +467,21 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       sendJson(200, { transport });
       return;
     }
+
     if (route === 'sync/connect-bluetooth' && req.method === 'POST') {
       await syncManager.connectBluetooth();
       sendJson(200, syncManager.getStatus());
       return;
     }
+
     if (route === 'sync/disconnect-bluetooth' && req.method === 'POST') {
       syncManager.disconnectBluetooth();
       sendJson(200, syncManager.getStatus());
       return;
     }
+
     if (route === 'command' && req.method === 'POST') {
-      const raw: string = await readBody(req);
-      body = JSON.parse(raw);
+      const body = JSON.parse(await readBody(req));
       const command = body.command as string;
       const perception = (body.perception as string) ?? 'Sin percepcion activa';
       const eval_ = moralNode.evaluate(command, { externalRequest: state.worldEnabled });
@@ -494,9 +498,9 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       sendJson(200, { allowed: true, response, evidenceId: evidence.id });
       return;
     }
+
     if (route === 'settings' && req.method === 'POST') {
-      const raw: string = await readBody(req);
-      body = JSON.parse(raw);
+      const body = JSON.parse(await readBody(req));
       const key = body.key as string;
       const value = body.value;
       if (key === 'humanVeto') {
@@ -517,6 +521,7 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       sendJson(200, { ok: true, key, value });
       return;
     }
+
     sendJson(404, { error: `No route: ${route}` });
   } catch (err) {
     sendJson(500, { error: err instanceof Error ? err.message : 'Server error' });
@@ -535,8 +540,8 @@ function readBody(req: IncomingMessage): Promise<string> {
 // ─── Bio tick broadcast ─────────────────────────────────
 
 setInterval(() => {
-  if (bioSoftware.getState().currentSession) {
-    const bioState = bioSoftware.getState();
+  const bioState = bioSoftware.getState();
+  if (bioState.currentSession) {
     const progress = bioSoftware.getProgress();
     const breathPhase = bioSoftware.getBreathPhase();
     broadcast(makeEvent('bio.tick', {
@@ -549,18 +554,16 @@ setInterval(() => {
     }));
     bioSoftware.tick((Date.now() - (bioState.currentSession?.startedAt ?? Date.now())) * 1000);
     if (!bioSoftware.getState().currentSession) {
-      broadcast(makeEvent('bio.session_complete', { protocol: bioState.activeProtocol }));
+      broadcast(makeEvent('bio.session_ended', {}));
     }
   }
 }, 1000);
 
-// ─── Start ──────────────────────────────────────────────
+// ─── Start servers ──────────────────────────────────────
 
-init().then(() => {
-  console.log(`Sentra Core API Server v1.0.0 listening on :${PORT}`);
-  console.log(`  WebSocket: ws://localhost:${PORT}`);
-  console.log(`  REST API:  http://localhost:${PORT}/api/...`);
-}).catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
+httpServer.listen(PORT, () => {
+  console.log(`[Sentra Core API] REST escuchando en http://localhost:${PORT}/api`);
+  console.log(`[Sentra Core API] WebSocket en ws://localhost:${PORT}`);
 });
+
+v
