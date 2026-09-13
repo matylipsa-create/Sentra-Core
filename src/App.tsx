@@ -1,5 +1,5 @@
-import { BlindUnifiedUI } from './components/BlindUnifiedUI';
+import { VisionScreen } from './components/VisionScreen';
 
 export default function App() {
-  return <BlindUnifiedUI />;
+  return <VisionScreen />;
 }

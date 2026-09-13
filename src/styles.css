@@ -902,3 +902,112 @@ body {
     font-size: 1.2rem;
   }
 }
+
+/* ===== Vision Screen — UI minimalista ciega ===== */
+.vision-screen {
+  min-height: 100vh;
+  background: #000;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 2rem;
+  text-align: center;
+}
+
+.vision-title {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.vision-main-button {
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  border: 4px solid #00ffcc;
+  background: radial-gradient(circle at 35% 35%, #00ffcc, #0099cc);
+  color: #000;
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.3s;
+  box-shadow: 0 0 40px rgba(0, 255, 204, 0.4);
+  padding: 1rem;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.vision-main-button:active {
+  transform: scale(0.95);
+}
+
+.vision-main-button.active {
+  background: radial-gradient(circle at 35% 35%, #ff6688, #cc0033);
+  border-color: #ff6688;
+  box-shadow: 0 0 50px rgba(255, 102, 136, 0.6);
+  animation: visionPulse 1.4s infinite ease-in-out;
+}
+
+@keyframes visionPulse {
+  0%, 100% { box-shadow: 0 0 40px rgba(255, 102, 136, 0.4); }
+  50% { box-shadow: 0 0 60px rgba(255, 102, 136, 0.7); }
+}
+
+.vision-status {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #fff;
+  max-width: 400px;
+}
+
+.vision-camera-status strong,
+.vision-detection-count strong {
+  color: #00ffcc;
+}
+
+.vision-detected-labels {
+  color: #00ffcc;
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.vision-last-description {
+  color: #ffcc00;
+  font-style: italic;
+  margin-top: 0.5rem;
+}
+
+.vision-error {
+  color: #ff4444;
+  margin-top: 1rem;
+}
+
+.vision-hint {
+  font-size: 0.9rem;
+  color: #888;
+  margin-top: 1rem;
+}
+
+.vision-hidden-video {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+@media (max-width: 480px) {
+  .vision-main-button {
+    width: 220px;
+    height: 220px;
+    font-size: 1.4rem;
+  }
+  .vision-title {
+    font-size: 1.6rem;
+  }
+}
