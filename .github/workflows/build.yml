@@ -25,21 +25,21 @@ jobs:
           path: dist/
           retention-days: 30
 
-  build-apk:
-    name: Build APK
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.16.0'
-          cache: true
-      - working-directory: frontend
-        run: flutter pub get
-      - working-directory: frontend
-        run: flutter build apk --release
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sentra-core-apk
-          path: frontend/build/app/outputs/flutter-apk/
-          retention-days: 30
+  # build-apk:
+  #   name: Build APK
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: subosito/flutter-action@v2
+  #       with:
+  #         flutter-version: '3.16.0'
+  #         cache: true
+  #     - working-directory: frontend
+  #       run: flutter pub get
+  #     - working-directory: frontend
+  #       run: flutter build apk --release
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: sentra-core-apk
+  #         path: frontend/build/app/outputs/flutter-apk/
+  #         retention-days: 30
