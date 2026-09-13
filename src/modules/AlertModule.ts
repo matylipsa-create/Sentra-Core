@@ -6,7 +6,7 @@
  */
 
 import { offlineLogger } from '../core/OfflineLogger';
-import { actionDispatcher } from '../core/ActionDispatcher';
+import { eventRouter } from '../core/EventRouter';
 import { deviceManager } from '../core/DeviceManager';
 import { voiceManager } from '../services/VoiceManager';
 
@@ -84,7 +84,7 @@ class AlertModule {
     if (alert.level === 'critical') {
       deviceManager.vibrate([200, 100, 200, 100, 200]);
       voiceManager.speak(alert.message, 1);
-      actionDispatcher.sendAlert('critical', alert.message);
+      eventRouter.sendAlert('critical', alert.message);
     } else if (alert.level === 'warning') {
       deviceManager.vibrate([100, 50, 100]);
       voiceManager.speak(alert.message, 2);

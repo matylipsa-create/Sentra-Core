@@ -40,7 +40,7 @@ export function BlindUnifiedUI() {
     };
   }, []);
 
-  const handleQuadrantAction = (action: string, quadrant: string) => {
+  const handleQuadrantAction = (action: string) => {
     switch (action) {
       case 'TOGGLE_EYES_MODE':
       case 'DESCRIBE_NOW':

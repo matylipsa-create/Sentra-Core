@@ -7,8 +7,7 @@
  */
 
 import { perceptionEngine, PerceptionEvent } from './PerceptionEngine';
-import { eventRouter, RouteDecision } from './EventRouter';
-import { actionDispatcher, ActionType } from './ActionDispatcher';
+import { eventRouter, RouteDecision, ActionType } from './EventRouter';
 import { failoverManager } from './FailoverManager';
 import { offlineLogger } from './OfflineLogger';
 import { moralNode } from './MoralNode';
@@ -93,7 +92,7 @@ class OrchestratorEngine {
         const evalResult = moralNode.evaluate(event.message);
         if (!evalResult.allowed) {
           const reason = evalResult.decisions.find((d) => !d.passed)?.reason ?? 'Bloqueado por filtro etico';
-          actionDispatcher.sendAlert('warning', `Evento bloqueado: ${reason}`);
+          eventRouter.sendAlert('warning', `Evento bloqueado: ${reason}`);
           offlineLogger.log({ type: 'moral_block', message: reason, data: { event } });
           return null;
         }
@@ -121,7 +120,7 @@ class OrchestratorEngine {
       handler: async (event) => {
         const decision = event.data?.['routeDecision'] as RouteDecision | undefined;
         if (decision && decision.actionType !== 'block') {
-          actionDispatcher.dispatch({
+          eventRouter.dispatch({
             type: decision.actionType as ActionType,
             level: event.level,
             message: event.message,

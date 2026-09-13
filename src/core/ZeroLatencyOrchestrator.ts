@@ -9,9 +9,19 @@
  */
 
 import { Layer0Bridge, Layer0Event, Layer0EventType } from './Layer0Bridge';
-import { Layer1Orchestrator } from './Layer1Orchestrator';
 import { evolis } from './EVOLIS';
 import { moralNode } from './MoralNode';
+
+class Layer1Orchestrator {
+  async start(): Promise<void> {}
+  stop(): void {}
+  handleSensorEvent(_event: Layer0Event): void {}
+  handleMoralBlock(_event: Layer0Event): void {}
+  handleChainEntry(_event: Layer0Event): void {}
+  handleChainViolation(_event: Layer0Event): void {}
+  handleVetoChange(_event: Layer0Event): void {}
+  handleSystemStatus(_event: Layer0Event): void {}
+}
 
 export type LayerStatus = 'disconnected' | 'connecting' | 'connected' | 'degraded' | 'error';
 

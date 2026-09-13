@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { orchestratorEngine, FlowStatus } from '../core/OrchestratorEngine';
 import { failoverManager, FailoverStatus } from '../core/FailoverManager';
 import { offlineLogger, LogEntry } from '../core/OfflineLogger';
-import { actionDispatcher, DispatchAction } from '../core/ActionDispatcher';
+import { eventRouter, DispatchAction } from '../core/EventRouter';
 import { alertModule, Alert } from '../modules/AlertModule';
 
 const STATE_LABELS: Record<string, string> = {
@@ -55,7 +55,7 @@ export function OrchestratorDashboard() {
     const unsubLogs = offlineLogger.subscribe((entry) => {
       setLogs((prev) => [entry, ...prev].slice(0, 50));
     });
-    const unsubActions = actionDispatcher.subscribe((action) => {
+    const unsubActions = eventRouter.subscribeActions((action) => {
       setActions((prev) => [action, ...prev].slice(0, 30));
     });
     const unsubAlerts = alertModule.subscribe(setAlerts);

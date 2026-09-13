@@ -6,7 +6,7 @@
  */
 
 import { offlineLogger } from './OfflineLogger';
-import { actionDispatcher } from './ActionDispatcher';
+import { eventRouter } from './EventRouter';
 
 export type FailoverState = 'stable' | 'degraded' | 'backup_active' | 'critical';
 
@@ -67,7 +67,7 @@ class FailoverManager {
 
   switchToBackup(): void {
     this.state = 'backup_active';
-    actionDispatcher.sendAlert('warning', 'Cambiando a nodo secundario de respaldo');
+    eventRouter.sendAlert('warning', 'Cambiando a nodo secundario de respaldo');
     offlineLogger.log({ type: 'failover_switch', message: 'Cambio a backup manual' });
     this.notify();
   }
@@ -110,7 +110,7 @@ class FailoverManager {
       }
     }
     entry.resolved = false;
-    actionDispatcher.sendAlert('critical', `Fallo sin backup disponible: ${error.message}`);
+    eventRouter.sendAlert('critical', `Fallo sin backup disponible: ${error.message}`);
   }
 
   private updateState(): void {
