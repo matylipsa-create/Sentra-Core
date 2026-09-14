@@ -55,7 +55,16 @@ class _SentraVisionWebViewState extends State<SentraVisionWebView> {
   void _initWebView() {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
+      ..setBackgroundColor(Colors.black);
+
+    if (_controller.platform is AndroidWebViewController) {
+      final androidController = _controller.platform as AndroidWebViewController;
+      androidController.setMediaPlaybackRequiresUserGesture(false);
+      androidController.setGeolocationEnabled(true);
+      androidController.setOnShowFileSelector((_) async => []);
+    }
+
+    _controller
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
@@ -91,18 +100,9 @@ class _SentraVisionWebViewState extends State<SentraVisionWebView> {
               }
             ''');
           },
-          onPermissionRequest: (WebViewPermissionRequest request) {
-            request.grant();
-          },
         ),
       )
       ..loadRequest(Uri.parse(PWA_URL));
-
-    if (_controller.platform is AndroidWebViewController) {
-      AndroidWebViewController.enableDebugging(false);
-      (_controller.platform as AndroidWebViewController)
-          .setMediaPlaybackRequiresUserGesture(false);
-    }
   }
 
   @override
@@ -114,11 +114,11 @@ class _SentraVisionWebViewState extends State<SentraVisionWebView> {
           children: [
             WebViewWidget(controller: _controller),
             if (_isLoading)
-              const Center(
+              Center(
                 child: Semantics(
                   label: 'Cargando Sentra Visión',
                   liveRegion: true,
-                  child: CircularProgressIndicator(
+                  child: const CircularProgressIndicator(
                     color: Color(0xFF00FFCC),
                   ),
                 ),
