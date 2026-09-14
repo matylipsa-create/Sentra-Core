@@ -4,12 +4,86 @@ import { deviceManager } from '../core/DeviceManager';
 import { useRealModeSensors, type Detection } from '../hooks/useRealModeSensors';
 
 const LABEL_ES: Record<string, string> = {
-  person: 'persona', dog: 'perro', cat: 'gato', car: 'auto',
-  bicycle: 'bicicleta', motorcycle: 'moto', bus: 'autobús',
-  truck: 'camión', chair: 'silla', table: 'mesa', bottle: 'botella',
-  phone: 'teléfono', book: 'libro', tv: 'televisor',
-  computer: 'computadora', knife: 'cuchillo', gun: 'arma',
-  weapon: 'arma', scissors: 'tijeras'
+  person: 'persona',
+  bicycle: 'bicicleta',
+  car: 'auto',
+  motorcycle: 'moto',
+  airplane: 'avión',
+  bus: 'autobús',
+  train: 'tren',
+  truck: 'camión',
+  boat: 'barco',
+  'traffic light': 'semáforo',
+  'fire hydrant': 'hidrante',
+  'stop sign': 'señal de alto',
+  'parking meter': 'parquímetro',
+  bench: 'banco',
+  bird: 'pájaro',
+  cat: 'gato',
+  dog: 'perro',
+  horse: 'caballo',
+  sheep: 'oveja',
+  cow: 'vaca',
+  elephant: 'elefante',
+  bear: 'oso',
+  zebra: 'cebra',
+  giraffe: 'jirafa',
+  backpack: 'mochila',
+  umbrella: 'paraguas',
+  handbag: 'cartera',
+  tie: 'corbata',
+  suitcase: 'maleta',
+  frisbee: 'frisbee',
+  skis: 'esquís',
+  snowboard: 'snowboard',
+  'sports ball': 'pelota',
+  kite: 'cometa',
+  'baseball bat': 'bate',
+  'baseball glove': 'guante',
+  skateboard: 'patineta',
+  surfboard: 'tabla de surf',
+  'tennis racket': 'raqueta',
+  bottle: 'botella',
+  'wine glass': 'copa',
+  cup: 'taza',
+  fork: 'tenedor',
+  knife: 'cuchillo',
+  spoon: 'cuchara',
+  bowl: 'tazón',
+  banana: 'banana',
+  apple: 'manzana',
+  sandwich: 'sándwich',
+  orange: 'naranja',
+  broccoli: 'brócoli',
+  carrot: 'zanahoria',
+  'hot dog': 'pancho',
+  pizza: 'pizza',
+  donut: 'dona',
+  cake: 'torta',
+  chair: 'silla',
+  couch: 'sofá',
+  'potted plant': 'planta',
+  bed: 'cama',
+  'dining table': 'mesa',
+  toilet: 'inodoro',
+  tv: 'televisor',
+  laptop: 'notebook',
+  mouse: 'mouse',
+  remote: 'control',
+  keyboard: 'teclado',
+  'cell phone': 'celular',
+  microwave: 'microondas',
+  oven: 'horno',
+  toaster: 'tostadora',
+  sink: 'pileta',
+  refrigerator: 'heladera',
+  book: 'libro',
+  clock: 'reloj',
+  vase: 'florero',
+  scissors: 'tijeras',
+  'teddy bear': 'oso de peluche',
+  'hair drier': 'secador',
+  toothbrush: 'cepillo de dientes',
 };
 
 const TTS_RATES = [1.0, 1.5, 2.0] as const;
@@ -28,6 +102,8 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastTapRef = useRef(0);
   const lastSpokenRef = useRef<string>('');
+  const lastSpokenTimeRef = useRef<number>(0);
+  const DEBOUNCE_MS = 3000;
 
   const speak = useCallback((text: string) => {
     try {
@@ -60,10 +136,15 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
     const labels = detections.map((d: Detection) => LABEL_ES[d.class] || d.class);
     setDetectedLabels(labels);
     setDetectionCount(detections.length);
-    const top = labels.slice(0, 3).join(', ');
-    const desc = `Detectados: ${top}`;
-    if (desc !== lastSpokenRef.current) {
-      lastSpokenRef.current = desc;
+    const currentLabels = labels.slice(0, 3).join(', ');
+    const desc = `Detectados: ${currentLabels}`;
+    const now = Date.now();
+    const isSame = currentLabels === lastSpokenRef.current;
+    const timeSinceLast = now - lastSpokenTimeRef.current;
+    const shouldSpeak = !isSame || (isSame && timeSinceLast >= DEBOUNCE_MS);
+    if (shouldSpeak) {
+      lastSpokenRef.current = currentLabels;
+      lastSpokenTimeRef.current = now;
       setLastDescription(desc);
       speak(desc);
       try { deviceManager.vibratePattern('NOTIFICATION'); } catch { /* noop */ }
