@@ -26,6 +26,8 @@ jobs:
       - name: Complete Android structure
         working-directory: frontend
         run: |
+          rm -rf android build .dart_tool
+          flutter clean
           flutter create . --platforms=android
           flutter pub get
 
@@ -33,19 +35,15 @@ jobs:
         working-directory: frontend
         run: flutter build apk --release
 
-      - name: Find APK
-        working-directory: frontend
+      - name: Verify APK exists
         run: |
-          echo "Buscando APK..."
-          find build -name '*.apk' -type f 2>/dev/null || echo 'No se encontraron APKs'
-          ls -la build/app/outputs/flutter-apk/ 2>/dev/null || echo 'flutter-apk no existe'
-          ls -la build/app/outputs/apk/release/ 2>/dev/null || echo 'apk/release no existe'
+          echo "Buscando APK desde la raíz del repo:"
+          find frontend/build -name '*.apk' -type f
+          ls -la frontend/build/app/outputs/flutter-apk/ 2>/dev/null || echo "flutter-apk no existe"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: sentra-vision-apk
-          path: |
-            frontend/build/app/outputs/flutter-apk/*.apk
-            frontend/build/app/outputs/apk/release/*.apk
-          if-no-files-found: warn
+          path: frontend/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
