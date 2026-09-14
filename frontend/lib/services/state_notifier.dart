@@ -196,7 +196,7 @@ class SentraStateNotifier extends ChangeNotifier {
         evidenceCount: status['evidenceCount'] as int? ?? 0,
       );
       notifyListeners();
-    } catch {
+    } catch (_) {
       // backend no disponible, usar defaults
     }
   }

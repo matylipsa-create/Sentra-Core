@@ -112,6 +112,26 @@ class BioState {
     this.enabled = false,
   });
 
+  BioState copyWith({
+    String? activeProtocol,
+    BioSession? currentSession,
+    List<BioSession>? sessions,
+    double? cardiacCoherence,
+    double? stressLevel,
+    double? focusLevel,
+    bool? enabled,
+  }) {
+    return BioState(
+      activeProtocol: activeProtocol ?? this.activeProtocol,
+      currentSession: currentSession ?? this.currentSession,
+      sessions: sessions ?? this.sessions,
+      cardiacCoherence: cardiacCoherence ?? this.cardiacCoherence,
+      stressLevel: stressLevel ?? this.stressLevel,
+      focusLevel: focusLevel ?? this.focusLevel,
+      enabled: enabled ?? this.enabled,
+    );
+  }
+
   factory BioState.fromJson(Map<String, dynamic> json) {
     return BioState(
       activeProtocol: json['activeProtocol'] as String?,

@@ -79,7 +79,7 @@ class SentraTheme {
           style: ElevatedButton.styleFrom(
             backgroundColor: bgElevated,
             foregroundColor: text,
-            minimumHeight: SentraTheme.space4 + SentraTheme.space2,
+            minimumSize: Size(0, SentraTheme.space4 + SentraTheme.space2),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(radiusSm),
               side: const BorderSide(color: border),
@@ -89,7 +89,7 @@ class SentraTheme {
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: primary,
-            minimumHeight: SentraTheme.space4 + SentraTheme.space2,
+            minimumSize: Size(0, SentraTheme.space4 + SentraTheme.space2),
             side: const BorderSide(color: primaryDark),
           ),
         ),

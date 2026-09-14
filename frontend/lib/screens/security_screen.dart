@@ -41,7 +41,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
           _selectedTransport = status['transport'] as String? ?? 'offline';
         });
       }
-    } catch {
+    } catch (_) {
       // backend no disponible
     }
   }
@@ -56,7 +56,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
             [];
         setState(() => _usbDevices = devices);
       }
-    } catch {
+    } catch (_) {
       // backend no disponible
     }
   }
@@ -80,7 +80,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     try {
       await widget.client.postRoute('sync/transport', {'transport': transport});
       if (mounted) setState(() => _selectedTransport = transport);
-    } catch {
+    } catch (_) {
       // backend no disponible
     }
     if (mounted) setState(() => _loading = false);
@@ -91,7 +91,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     try {
       await widget.client.postRoute('sync/connect-bluetooth', {});
       await _loadSyncStatus();
-    } catch {
+    } catch (_) {
       // backend no disponible
     }
     if (mounted) setState(() => _loading = false);
@@ -102,7 +102,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     try {
       await widget.client.postRoute('sync/disconnect-bluetooth', {});
       await _loadSyncStatus();
-    } catch {
+    } catch (_) {
       // backend no disponible
     }
     if (mounted) setState(() => _loading = false);
@@ -112,7 +112,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     try {
       await widget.client.postRoute('usb/block', {'portId': portId});
       await _loadUsbDevices();
-    } catch {
+    } catch (_) {
       // backend no disponible
     }
   }
@@ -123,7 +123,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     try {
       await widget.client.postRoute('usb/unblock', {'portId': portId});
       await _loadUsbDevices();
-    } catch {
+    } catch (_) {
       // backend no disponible
     }
   }
@@ -141,7 +141,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         );
       }
       await _loadUsbDevices();
-    } catch {
+    } catch (_) {
       // backend no disponible
     }
   }

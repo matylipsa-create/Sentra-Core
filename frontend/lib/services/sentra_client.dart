@@ -130,7 +130,7 @@ class SentraClient {
       } else {
         _responseController.add(TCREIResponse.fromJson(json));
       }
-    } catch {
+    } catch (_) {
       // invalid JSON, ignore
     }
   }

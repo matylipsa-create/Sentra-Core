@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/constants.dart';
 import '../config/theme.dart';
 
 /// Estado visual del orbe de voz.

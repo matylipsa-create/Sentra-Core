@@ -33,7 +33,7 @@ class _EvidenceScreenState extends State<EvidenceScreen> {
           ?.map((e) => e as Map<String, dynamic>)
           .toList();
       if (mounted) setState(() { _entries = list ?? []; _loading = false; });
-    } catch {
+    } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }

@@ -37,7 +37,7 @@ class _BioScreenState extends State<BioScreen> {
           ?.map((e) => BioProtocolDef.fromJson(e as Map<String, dynamic>))
           .toList();
       if (list != null && mounted) setState(() => _protocols = list);
-    } catch {
+    } catch (_) {
       // use defaults
     }
   }
@@ -118,7 +118,7 @@ class _BioScreenState extends State<BioScreen> {
     final protocolLabel = _protocols
         .where((p) => p.id == bio.activeProtocol)
         .map((p) => p.label)
-        .firstOrDefault ?? bio.activeProtocol;
+        .firstOrDefault ?? bio.activeProtocol ?? '';
 
     return Column(
       children: [

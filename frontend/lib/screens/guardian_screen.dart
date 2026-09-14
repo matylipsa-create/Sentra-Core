@@ -30,7 +30,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
     try {
       final resp = await widget.client.getGuardianStatus();
       if (mounted) setState(() => _status = GuardianStatus.fromJson(resp));
-    } catch {
+    } catch (_) {
       // use default
     }
   }
