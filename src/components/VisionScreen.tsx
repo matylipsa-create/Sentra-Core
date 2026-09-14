@@ -86,7 +86,12 @@ const LABEL_ES: Record<string, string> = {
   toothbrush: 'cepillo de dientes',
 };
 
+function translateLabel(className: string): string {
+  return LABEL_ES[className] ?? className;
+}
+
 const TTS_RATES = [1.0, 1.5, 2.0] as const;
+const DEBOUNCE_MS = 3000;
 
 interface VisionScreenProps {
   onToggle?: (active: boolean) => void;
@@ -103,7 +108,6 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
   const lastTapRef = useRef(0);
   const lastSpokenRef = useRef<string>('');
   const lastSpokenTimeRef = useRef<number>(0);
-  const DEBOUNCE_MS = 3000;
 
   const speak = useCallback((text: string) => {
     try {
@@ -133,7 +137,7 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
 
   useEffect(() => {
     if (detections.length === 0) return;
-    const labels = detections.map((d: Detection) => LABEL_ES[d.class] || d.class);
+    const labels = detections.map((d: Detection) => translateLabel(d.class));
     setDetectedLabels(labels);
     setDetectionCount(detections.length);
     const currentLabels = labels.slice(0, 3).join(', ');
