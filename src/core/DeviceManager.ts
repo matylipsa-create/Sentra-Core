@@ -76,6 +76,9 @@ export class DeviceManager {
     NOTIFICATION: [100, 50, 100],
     CONFIRM: [200],
     QUADRANT_TAP: [50],
+    VISION_VERY_CLOSE: [200, 50, 200, 50, 200],
+    VISION_CLOSE: [150, 50, 150],
+    VISION_FAR: [80],
   };
 
   public vibratePattern(name: string): void {

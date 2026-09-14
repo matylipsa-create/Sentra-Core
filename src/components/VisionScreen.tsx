@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { voiceManager } from '../services/VoiceManager';
 import { deviceManager } from '../core/DeviceManager';
+import { spatialAudioEngine } from '../core/SpatialAudioEngine';
 import { useRealModeSensors, type Detection } from '../hooks/useRealModeSensors';
 
 const LABEL_ES: Record<string, string> = {
@@ -93,6 +94,18 @@ function translateLabel(className: string): string {
 const TTS_RATES = [1.0, 1.5, 2.0] as const;
 const DEBOUNCE_MS = 3000;
 
+function computeBboxArea(d: Detection, videoWidth: number, videoHeight: number): number {
+  const [, , w, h] = d.bbox;
+  const area = (w * h) / (videoWidth * videoHeight);
+  return Math.max(0, Math.min(1, area));
+}
+
+function getHapticPatternForArea(area: number): string {
+  if (area > 0.2) return 'VISION_VERY_CLOSE';
+  if (area >= 0.1) return 'VISION_CLOSE';
+  return 'VISION_FAR';
+}
+
 interface VisionScreenProps {
   onToggle?: (active: boolean) => void;
 }
@@ -108,6 +121,7 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
   const lastTapRef = useRef(0);
   const lastSpokenRef = useRef<string>('');
   const lastSpokenTimeRef = useRef<number>(0);
+  const audioInitRef = useRef(false);
 
   const speak = useCallback((text: string) => {
     try {
@@ -124,6 +138,14 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
     }
   }, []);
 
+  const ensureAudioInit = useCallback(() => {
+    if (audioInitRef.current) return;
+    try {
+      spatialAudioEngine.init();
+    } catch { /* noop */ }
+    audioInitRef.current = true;
+  }, []);
+
   const handleRateChange = useCallback((rate: number) => {
     voiceManager.setRate(rate);
     setTtsRate(rate);
@@ -137,6 +159,10 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
 
   useEffect(() => {
     if (detections.length === 0) return;
+    const video = videoRef.current;
+    const videoWidth = video?.videoWidth || 300;
+    const videoHeight = video?.videoHeight || 300;
+
     const labels = detections.map((d: Detection) => translateLabel(d.class));
     setDetectedLabels(labels);
     setDetectionCount(detections.length);
@@ -146,12 +172,24 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
     const isSame = currentLabels === lastSpokenRef.current;
     const timeSinceLast = now - lastSpokenTimeRef.current;
     const shouldSpeak = !isSame || (isSame && timeSinceLast >= DEBOUNCE_MS);
+
     if (shouldSpeak) {
       lastSpokenRef.current = currentLabels;
       lastSpokenTimeRef.current = now;
       setLastDescription(desc);
+
+      const primaryDetection = detections[0];
+      const area = computeBboxArea(primaryDetection, videoWidth, videoHeight);
+
+      try { deviceManager.vibratePattern(getHapticPatternForArea(area)); } catch { /* noop */ }
+
+      try {
+        const panX = ((primaryDetection.bbox[0] + primaryDetection.bbox[2] / 2) / videoWidth - 0.5) * 2;
+        const distance = 3 * (1 - area);
+        spatialAudioEngine.playSpatialBeep(panX, distance);
+      } catch { /* noop */ }
+
       speak(desc);
-      try { deviceManager.vibratePattern('NOTIFICATION'); } catch { /* noop */ }
     }
   }, [detections, speak]);
 
@@ -161,6 +199,8 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
     onToggle?.(newState);
     setError(null);
     lastSpokenRef.current = '';
+
+    ensureAudioInit();
 
     try {
       if (deviceManager && typeof (deviceManager as any).vibratePattern === 'function') {
@@ -193,7 +233,7 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
         videoRef.current.srcObject = null;
       }
     }
-  }, [isActive, speak, onToggle]);
+  }, [isActive, speak, onToggle, ensureAudioInit]);
 
   useEffect(() => {
     const handleDoubleTap = (e: TouchEvent) => {
@@ -220,14 +260,14 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
   const effectiveError = error || detectionError;
 
   return (
-    <div className="vision-screen" role="application" aria-label="Sentra Visión">
+    <div className="vision-screen" role="application" aria-label="Sentra Visión — asistencia visual con detección de objetos y descripción por voz">
       <h1 className="vision-title" aria-level={1}>Sentra Visión</h1>
 
       <button
         className={`vision-main-button ${isActive ? 'active' : 'inactive'}`}
         onClick={handleToggle}
         onKeyDown={handleKeyDown}
-        aria-label={isActive ? 'Desactivar visión' : 'Activar visión'}
+        aria-label={isActive ? 'Desactivar visión: detener cámara y detección de objetos' : 'Activar visión: iniciar cámara y detección de objetos con descripción por voz'}
         aria-pressed={isActive}
         role="button"
         tabIndex={0}
@@ -235,22 +275,24 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
         {isActive ? 'DESACTIVAR' : 'ACTIVAR VISIÓN'}
       </button>
 
-      <div className="tts-rate-selector" role="group" aria-label="Velocidad de voz">
-        <span className="tts-rate-label">Voz:</span>
+      <div className="tts-rate-selector" role="group" aria-label="Velocidad de voz para descripciones">
+        <span className="tts-rate-label" id="tts-rate-label">Voz:</span>
         {TTS_RATES.map((rate) => (
           <button
             key={rate}
             className={`tts-rate-btn ${ttsRate === rate ? 'tts-rate-btn--active' : ''}`}
             onClick={() => handleRateChange(rate)}
-            aria-label={`Velocidad de voz ${rate}x`}
+            aria-label={`Velocidad de voz ${rate} veces`}
             aria-pressed={ttsRate === rate}
+            role="button"
+            tabIndex={0}
           >
             {rate === 1.0 ? '1x' : `${rate}x`}
           </button>
         ))}
       </div>
 
-      <div className="vision-status" role="status" aria-live="polite" aria-atomic="true">
+      <div className="vision-status" role="status" aria-live="polite" aria-atomic="true" aria-label="Estado de la cámara y detecciones">
         <p className="vision-camera-status">
           Cámara: <strong>{isActive ? 'ACTIVA' : 'INACTIVA'}</strong>
         </p>
@@ -260,15 +302,19 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
               Objetos detectados: <strong>{detectionCount}</strong>
             </p>
             {detectedLabels.length > 0 && (
-              <p className="vision-detected-labels">{detectedLabels.slice(0, 3).join(', ')}</p>
+              <p className="vision-detected-labels" aria-label={`Objetos detectados: ${detectedLabels.slice(0, 3).join(', ')}`}>
+                {detectedLabels.slice(0, 3).join(', ')}
+              </p>
             )}
             {lastDescription && (
-              <p className="vision-last-description">"{lastDescription}"</p>
+              <p className="vision-last-description" aria-label={`Última descripción: ${lastDescription}`}>
+                "{lastDescription}"
+              </p>
             )}
           </>
         )}
         {effectiveError && (
-          <p className="vision-error" role="alert">⚠️ {effectiveError}</p>
+          <p className="vision-error" role="alert" aria-label={`Error: ${effectiveError}`}>⚠️ {effectiveError}</p>
         )}
       </div>
 
@@ -276,7 +322,7 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
         Doble toque en pantalla para activar/desactivar
       </p>
 
-      <video ref={videoRef} className="vision-hidden-video" aria-hidden="true" playsInline />
+      <video ref={videoRef} className="vision-hidden-video" aria-hidden="true" playsInline tabIndex={-1} />
     </div>
   );
 }

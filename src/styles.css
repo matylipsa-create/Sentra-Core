@@ -1049,3 +1049,76 @@ body {
     font-size: 1.6rem;
   }
 }
+
+/* ═══ VISION ONBOARDING ═══ */
+.vision-onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.vision-onboarding-card {
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: center;
+  padding: 2rem 1.5rem;
+  background: #12121a;
+  border: 1px solid #2a2a3e;
+  border-radius: 12px;
+  box-shadow: 0 0 40px rgba(0, 255, 204, 0.15);
+}
+
+.vision-onboarding-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #00ffcc;
+  letter-spacing: 0.02em;
+}
+
+.vision-onboarding-text {
+  font-size: 1rem;
+  color: #e8e8f0;
+  line-height: 1.6;
+}
+
+.vision-onboarding-btn {
+  min-height: 56px;
+  min-width: 160px;
+  padding: 14px 32px;
+  border-radius: 8px;
+  border: 2px solid #00ffcc;
+  background: rgba(0, 255, 204, 0.12);
+  color: #00ffcc;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vision-onboarding-btn:hover {
+  background: rgba(0, 255, 204, 0.2);
+  box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+}
+
+.vision-onboarding-btn:active {
+  transform: scale(0.96);
+}
+
+.vision-onboarding-btn:focus-visible {
+  outline: 3px solid #00ffcc;
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .vision-onboarding-title { font-size: 1.3rem; }
+  .vision-onboarding-text { font-size: 0.9rem; }
+}
