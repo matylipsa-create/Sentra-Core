@@ -3,6 +3,7 @@ import { voiceManager } from '../services/VoiceManager';
 import { deviceManager } from '../core/DeviceManager';
 import { spatialAudioEngine } from '../core/SpatialAudioEngine';
 import { useRealModeSensors, type Detection } from '../hooks/useRealModeSensors';
+import { initOCR, recognizeText } from '../services/OCREngine';
 
 const LABEL_ES: Record<string, string> = {
   person: 'persona',
@@ -117,6 +118,8 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
   const [detectedLabels, setDetectedLabels] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [ttsRate, setTtsRate] = useState<number>(voiceManager.getRate());
+  const [isOCRLoading, setIsOCRLoading] = useState(false);
+  const [ocrText, setOcrText] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastTapRef = useRef(0);
   const lastSpokenRef = useRef<string>('');
@@ -250,6 +253,30 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
     return () => window.removeEventListener('touchstart', handleDoubleTap);
   }, [handleToggle]);
 
+  const handleReadText = useCallback(async () => {
+    if (!isActive) {
+      speak('Activá visión primero');
+      return;
+    }
+    setIsOCRLoading(true);
+    setOcrText('');
+    speak('Leyendo texto. Un momento.');
+    try {
+      await initOCR();
+      const text = await recognizeText(videoRef.current!);
+      if (text) {
+        setOcrText(text);
+        speak(text);
+      } else {
+        speak('No se detectó texto');
+      }
+    } catch {
+      speak('Error al leer texto');
+    } finally {
+      setIsOCRLoading(false);
+    }
+  }, [isActive, speak]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -291,6 +318,23 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
           </button>
         ))}
       </div>
+
+      <button
+        className="vision-ocr-button"
+        onClick={handleReadText}
+        disabled={!isActive || isOCRLoading}
+        aria-label={isOCRLoading ? 'Leyendo texto con OCR, espere' : 'Leer texto de la cámara con OCR'}
+        role="button"
+        tabIndex={0}
+      >
+        {isOCRLoading ? 'LEYENDO...' : 'LEER TEXTO'}
+      </button>
+
+      {ocrText && (
+        <div className="vision-ocr-text" role="region" aria-live="polite" aria-label="Texto reconocido por OCR">
+          {ocrText}
+        </div>
+      )}
 
       <div className="vision-status" role="status" aria-live="polite" aria-atomic="true" aria-label="Estado de la cámara y detecciones">
         <p className="vision-camera-status">
