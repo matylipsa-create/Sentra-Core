@@ -8,6 +8,8 @@ export interface VoiceCue {
 export type PassiveListenCallback = (transcript: string) => void;
 
 const VOICE_STORAGE_KEY = 'sentra_voice_uri';
+const VOICE_RATE_STORAGE_KEY = 'sentra_voice_rate';
+const VALID_RATES = [1.0, 1.5, 2.0] as const;
 
 const COMMON_MISSPELLINGS: Record<string, string> = {
   'como': 'cómo', 'que': 'qué', 'estas': 'estás', 'donde': 'dónde',
@@ -38,6 +40,7 @@ export class VoiceManager {
   private dedupeWindowMs = 5000;
   private enabled = true;
   private selectedVoiceURI: string | null = null;
+  private rate: number = 1.0;
   private passiveRecognition: SpeechRecognition | null = null;
   private passiveActive = false;
   private passiveCallback: PassiveListenCallback | null = null;
@@ -47,6 +50,7 @@ export class VoiceManager {
     if ('speechSynthesis' in window) {
       this.synth = window.speechSynthesis;
       this.selectedVoiceURI = this.loadSavedVoice();
+      this.rate = this.loadSavedRate();
       this.synth.addEventListener('voiceschanged', () => {
         this.applySavedVoice();
       });
@@ -59,6 +63,30 @@ export class VoiceManager {
     } catch {
       return null;
     }
+  }
+
+  private loadSavedRate(): number {
+    try {
+      const raw = localStorage.getItem(VOICE_RATE_STORAGE_KEY);
+      const parsed = raw ? parseFloat(raw) : 1.0;
+      return VALID_RATES.includes(parsed as (typeof VALID_RATES)[number]) ? parsed : 1.0;
+    } catch {
+      return 1.0;
+    }
+  }
+
+  setRate(rate: number): void {
+    if (!VALID_RATES.includes(rate as (typeof VALID_RATES)[number])) return;
+    this.rate = rate;
+    try {
+      localStorage.setItem(VOICE_RATE_STORAGE_KEY, String(rate));
+    } catch {
+      // localStorage may be unavailable
+    }
+  }
+
+  getRate(): number {
+    return this.rate;
   }
 
   private applySavedVoice(): void {
@@ -113,7 +141,7 @@ export class VoiceManager {
     this.current = next;
     const utterance = new SpeechSynthesisUtterance(next.text);
     utterance.lang = 'es-ES';
-    utterance.rate = 1.0;
+    utterance.rate = this.rate;
     if (this.selectedVoiceURI) {
       const voices = this.synth.getVoices();
       const voice = voices.find((v) => v.voiceURI === this.selectedVoiceURI);

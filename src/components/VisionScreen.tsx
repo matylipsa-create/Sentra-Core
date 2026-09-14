@@ -12,6 +12,8 @@ const LABEL_ES: Record<string, string> = {
   weapon: 'arma', scissors: 'tijeras'
 };
 
+const TTS_RATES = [1.0, 1.5, 2.0] as const;
+
 interface VisionScreenProps {
   onToggle?: (active: boolean) => void;
 }
@@ -22,6 +24,7 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
   const [detectionCount, setDetectionCount] = useState(0);
   const [detectedLabels, setDetectedLabels] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [ttsRate, setTtsRate] = useState<number>(voiceManager.getRate());
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastTapRef = useRef(0);
   const lastSpokenRef = useRef<string>('');
@@ -39,6 +42,11 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(u);
     }
+  }, []);
+
+  const handleRateChange = useCallback((rate: number) => {
+    voiceManager.setRate(rate);
+    setTtsRate(rate);
   }, []);
 
   const { detections, error: detectionError } = useRealModeSensors(
@@ -141,6 +149,21 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
       >
         {isActive ? 'DESACTIVAR' : 'ACTIVAR VISIÓN'}
       </button>
+
+      <div className="tts-rate-selector" role="group" aria-label="Velocidad de voz">
+        <span className="tts-rate-label">Voz:</span>
+        {TTS_RATES.map((rate) => (
+          <button
+            key={rate}
+            className={`tts-rate-btn ${ttsRate === rate ? 'tts-rate-btn--active' : ''}`}
+            onClick={() => handleRateChange(rate)}
+            aria-label={`Velocidad de voz ${rate}x`}
+            aria-pressed={ttsRate === rate}
+          >
+            {rate === 1.0 ? '1x' : `${rate}x`}
+          </button>
+        ))}
+      </div>
 
       <div className="vision-status" role="status" aria-live="polite" aria-atomic="true">
         <p className="vision-camera-status">

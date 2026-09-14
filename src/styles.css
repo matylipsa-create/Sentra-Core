@@ -1001,6 +1001,44 @@ body {
   overflow: hidden;
 }
 
+.tts-rate-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tts-rate-label {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.tts-rate-btn {
+  min-height: 36px;
+  min-width: 36px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid #2a2a3e;
+  background: #12121a;
+  color: #8888a0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tts-rate-btn:hover {
+  border-color: #00ffcc;
+  color: #00ffcc;
+}
+
+.tts-rate-btn--active {
+  border-color: #00ffcc;
+  background: rgba(0, 255, 204, 0.12);
+  color: #00ffcc;
+}
+
 @media (max-width: 480px) {
   .vision-main-button {
     width: 220px;
