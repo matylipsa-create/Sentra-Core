@@ -59,7 +59,6 @@ class _SentraVisionWebViewState extends State<SentraVisionWebView> {
 
     if (_controller.platform is AndroidWebViewController) {
       final androidController = _controller.platform as AndroidWebViewController;
-      androidController.setDomStorageEnabled(true);
       androidController.setMediaPlaybackRequiresUserGesture(false);
       androidController.setGeolocationEnabled(true);
       androidController.setOnShowFileSelector((_) async => []);
