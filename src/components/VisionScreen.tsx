@@ -5,6 +5,7 @@ import { spatialAudioEngine } from '../core/SpatialAudioEngine';
 import { useRealModeSensors, type Detection } from '../hooks/useRealModeSensors';
 import { initOCR, recognizeText } from '../services/OCREngine';
 import { describeScene } from '../lib/spatialTranslator';
+import { useStableDetections } from '../hooks/useStableDetections';
 
 const LABEL_ES: Record<string, string> = {
   person: 'persona',
@@ -155,11 +156,13 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
     setTtsRate(rate);
   }, []);
 
-  const { detections, error: detectionError } = useRealModeSensors(
+  const { detections: rawDetections, error: detectionError } = useRealModeSensors(
     videoRef,
     isActive,
     3000
   );
+
+  const detections = useStableDetections(rawDetections, 'outdoor');
 
   useEffect(() => {
     if (detections.length === 0) return;
