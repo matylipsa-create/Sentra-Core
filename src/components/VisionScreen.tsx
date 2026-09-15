@@ -129,6 +129,8 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
   const audioInitRef = useRef(false);
 
   const speak = useCallback((text: string) => {
+    console.log('[TTS] Text:', text);
+    console.log('[TTS] Speaking...');
     try {
       if (voiceManager && typeof (voiceManager as any).speak === 'function') {
         (voiceManager as any).speak(text, 2);
@@ -165,6 +167,7 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
   const detections = useStableDetections(rawDetections, 'outdoor');
 
   useEffect(() => {
+    console.log('[USE-EFFECT] Detections:', detections.length);
     if (detections.length === 0) return;
     const video = videoRef.current;
     const videoWidth = video?.videoWidth || 300;
@@ -173,6 +176,7 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
     const labels = detections.map((d: Detection) => translateLabel(d.class));
     setDetectedLabels(labels);
     setDetectionCount(detections.length);
+    console.log('[DETECTION] Count:', detections.length);
     const sceneDesc = describeScene(detections, translateLabel);
     const now = Date.now();
     const isSame = sceneDesc === lastSpokenRef.current;
@@ -217,13 +221,16 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
     if (newState) {
       speak('Visión activada. Describiendo entorno.');
       if (videoRef.current) {
+        console.log('[CAMERA] Activando...');
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment' }, audio: false
           });
+          console.log('[CAMERA] OK:', stream.getVideoTracks()[0]?.label);
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
-        } catch {
+        } catch (err) {
+          console.error('[CAMERA] Error:', (err as { name?: string }).name, (err as { message?: string }).message);
           setError('No se pudo acceder a la cámara');
           speak('Error al activar cámara');
           setIsActive(false);
