@@ -4,6 +4,7 @@ import { deviceManager } from '../core/DeviceManager';
 import { spatialAudioEngine } from '../core/SpatialAudioEngine';
 import { useRealModeSensors, type Detection } from '../hooks/useRealModeSensors';
 import { initOCR, recognizeText } from '../services/OCREngine';
+import { describeScene } from '../lib/spatialTranslator';
 
 const LABEL_ES: Record<string, string> = {
   person: 'persona',
@@ -169,17 +170,16 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
     const labels = detections.map((d: Detection) => translateLabel(d.class));
     setDetectedLabels(labels);
     setDetectionCount(detections.length);
-    const currentLabels = labels.slice(0, 3).join(', ');
-    const desc = `Detectados: ${currentLabels}`;
+    const sceneDesc = describeScene(detections, translateLabel);
     const now = Date.now();
-    const isSame = currentLabels === lastSpokenRef.current;
+    const isSame = sceneDesc === lastSpokenRef.current;
     const timeSinceLast = now - lastSpokenTimeRef.current;
     const shouldSpeak = !isSame || (isSame && timeSinceLast >= DEBOUNCE_MS);
 
     if (shouldSpeak) {
-      lastSpokenRef.current = currentLabels;
+      lastSpokenRef.current = sceneDesc;
       lastSpokenTimeRef.current = now;
-      setLastDescription(desc);
+      setLastDescription(sceneDesc);
 
       const primaryDetection = detections[0];
       const area = computeBboxArea(primaryDetection, videoWidth, videoHeight);
@@ -192,7 +192,7 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
         spatialAudioEngine.playSpatialBeep(panX, distance);
       } catch { /* noop */ }
 
-      speak(desc);
+      speak(sceneDesc);
     }
   }, [detections, speak]);
 
