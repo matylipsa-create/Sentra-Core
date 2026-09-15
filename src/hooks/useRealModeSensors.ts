@@ -38,6 +38,7 @@ export function useRealModeSensors(
     let cancelled = false;
 
     async function loadModel() {
+      console.log('[COCO-SSD] Iniciando carga...');
       try {
         const tf = await import('@tensorflow/tfjs');
         const cocoSsd = await import('@tensorflow-models/coco-ssd');
@@ -46,8 +47,10 @@ export function useRealModeSensors(
         const model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
         if (cancelled) return;
         modelRef.current = model as unknown as CocoSsdModel;
+        console.log('[COCO-SSD] Modelo cargado exitosamente');
         setState((s) => ({ ...s, loading: false }));
       } catch (err) {
+        console.error('[COCO-SSD] Error al cargar:', err);
         setState((s) => ({
           ...s, loading: false,
           error: err instanceof Error ? err.message : 'Error loading model',
@@ -78,10 +81,12 @@ export function useRealModeSensors(
       const model = modelRef.current;
       if (!video || !model || video.readyState < 2) return;
       try {
+        console.log('[LOOP] Frame enviado al modelo');
         const predictions = await model.detect(video);
         const detections: Detection[] = predictions.map((p) => ({
           class: p.class, score: p.score, bbox: p.bbox as [number, number, number, number],
         }));
+        console.log('[LOOP] Detecciones:', detections.length);
         perceptionEngine.current.setBioContext(bioSoftware.getState());
         const perception = perceptionEngine.current.process({
           visionDetections: detections,
