@@ -6,6 +6,54 @@
 
 ---
 
+## Features Implementadas (2026-09-14)
+
+### Sentra Core Vision (App para personas ciegas)
+
+- ✅ UI minimalista: 1 botón 'ACTIVAR VISIÓN'
+- ✅ Cámara + COCO-SSD: detección local offline (< 200ms)
+- ✅ TTS configurable: velocidades 1x, 1.5x, 2x
+- ✅ Traducción ES: 80 clases COCO-SSD (keyboard → teclado)
+- ✅ Debounce: 3 segundos (evita repetición)
+- ✅ Feedback háptico: por distancia (VERY_CLOSE, CLOSE, FAR)
+- ✅ Audio 3D binaural: panning izquierda/derecha
+- ✅ ARIA 100%: TalkBack, VoiceOver, NVDA ready
+- ✅ Onboarding por voz: TTS al primer uso
+- ✅ OCR: Tesseract.js v7.0.0 (español, offline)
+- ✅ MoralNode: veto ético con 4 reglas
+- ✅ EVOLIS: trazabilidad hash chain SHA-256
+
+### Build
+
+- Módulos: 1360
+- Errores TypeScript: 0
+- PWA: instalable, offline-first
+
+---
+
+## Roadmap
+
+### Corto plazo (Q4 2026)
+
+- 🟡 Flutter Android: APK nativo con TalkBack
+- 🟡 Cola de sync IndexedDB: persistencia offline
+- 🟡 Piloto UMADESCA: 10 usuarios reales
+- 🟡 Video demo: 2-3 minutos para ATICMA
+
+### Mediano plazo (Q1 2027)
+
+- 🟡 Tótem 2.0: ESP32-S3 + LoRa mesh
+- 🟡 OCR con Google ML Kit: mejor precisión
+- 🟡 Audio 3D avanzado: HRTF real
+
+### Largo plazo (2027)
+
+- 🟡 9 modos de operación: Visión, Seguridad, Movimiento, etc.
+- 🟡 Red nacional: UMADESCA + defensa civil
+- 🟡 Marketplace: integraciones con 911, redes privadas
+
+---
+
 ## Visión General
 
 Sentra Core es un **motor de inteligencia artificial soberano** que funciona completamente offline, con un filtro ético inquebrantable (veto humano) y trazabilidad criptográfica inalterable (EVOLIS). Es una navaja suiza modular con 9 modos de operación, diseñada para funcionar en cualquier dispositivo — celular, PC o hardware dedicado — sin depender de la nube.
@@ -261,7 +309,7 @@ docs/
   HARDWARE_TOTEM_2.0.md       Arquitectura de hardware Tótem 2.0
 ```
 
-## Estado del Proyecto (2026-09-13)
+## Estado del Proyecto (2026-09-14)
 
 - Build: ✅ Pasa (0 errores TypeScript)
 - Archivos en src/core/: 31
