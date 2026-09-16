@@ -176,28 +176,6 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
 
     const labels = detections.map((d: Detection) => translateLabel(d.class));
     setDetectedLabels(labels);
-      try {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        gain.gain.value = 0.001;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.01);
-        console.log('[AUDIO] AudioContext desbloqueado');
-      } catch (err) {
-        console.error('[AUDIO] Error al desbloquear:', err);
-      }
-
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        const silentUtterance = new SpeechSynthesisUtterance(' ');
-        silentUtterance.volume = 0.001;
-        window.speechSynthesis.speak(silentUtterance);
-        window.speechSynthesis.cancel();
-        console.log('[TTS] speechSynthesis desbloqueado');
-      }
-
     setDetectionCount(detections.length);
     console.log('[DETECTION] Count:', detections.length);
     const sceneDesc = describeScene(detections, translateLabel);
@@ -234,6 +212,30 @@ export function VisionScreen({ onToggle }: VisionScreenProps) {
     lastSpokenRef.current = '';
 
     ensureAudioInit();
+
+    if (newState) {
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.value = 0.001;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.01);
+        console.log('[AUDIO] AudioContext desbloqueado');
+      } catch (err) {
+        console.error('[AUDIO] Error al desbloquear:', err);
+      }
+
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        const silentUtterance = new SpeechSynthesisUtterance(' ');
+        silentUtterance.volume = 0.001;
+        window.speechSynthesis.speak(silentUtterance);
+        window.speechSynthesis.cancel();
+        console.log('[TTS] speechSynthesis desbloqueado');
+      }
+    }
 
     try {
       if (deviceManager && typeof (deviceManager as any).vibratePattern === 'function') {
